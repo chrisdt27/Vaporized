@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vaporized - The Journey</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 800px;
+            padding: 2rem;
+        }
+        
+        .title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 1.4rem;
+            margin-bottom: 3rem;
+            color: #ccc;
+            line-height: 1.6;
+        }
+        
+        .journey-steps {
+            display: flex;
+            justify-content: space-between;
+            margin: 3rem 0;
+            position: relative;
+        }
+        
+        .journey-steps::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+        
+        .step {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .step-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #1a1a2e;
+            border: 3px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.8rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .step.active .step-circle {
+            border-color: #4ecdc4;
+            background: #16213e;
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
+        }
+        
+        .step.completed .step-circle {
+            border-color: #45b7d1;
+            background: #1a535c;
+        }
+        
+        .step-label {
+            font-size: 1rem;
+            color: #888;
+            font-weight: 500;
+        }
+        
+        .step.active .step-label {
+            color: #4ecdc4;
+        }
+        
+        .step.completed .step-label {
+            color: #45b7d1;
+        }
+        
+        .controls {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #4ecdc4;
+            border: 2px solid #4ecdc4;
+        }
+        
+        .btn-secondary:hover {
+            background: #4ecdc4;
+            color: #000;
+        }
+        
+        .info-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border-left: 4px solid #ff6b6b;
+        }
+        
+        .info-panel h3 {
+            color: #ff6b6b;
+            margin-bottom: 0.5rem;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            margin: 2rem 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        @media (max-width: 768px) {
+            .journey-steps {
+                flex-direction: column;
+                gap: 2rem;
+            }
+            
+            .journey-steps::before {
+                display: none;
+            }
+            
+            .title {
+                font-size: 2.5rem;
+            }
+            
+            .subtitle {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">VAPORIZED</h1>
+        <p class="subtitle">An immersive journey through the human respiratory system<br>Explore how vaping affects your body from the inside</p>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="journey-steps">
+            <div class="step active" id="step1">
+                <div class="step-circle">👄</div>
+                <div class="step-label">Mouth & Throat</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-circle">🌳</div>
+                <div class="step-label">Bronchial Tubes</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-circle">🫁</div>
+                <div class="step-label">Lung Alveoli</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <a href="journeys/mouth_final.html" class="btn btn-primary" id="startBtn">Start Journey</a>
+            <button class="btn btn-secondary" id="restartBtn">Restart Journey</button>
+        </div>
+        
+        <div class="info-panel">
+            <h3>What to Expect:</h3>
+            <p>• 3 immersive anatomical experiences</p>
+            <p>• Interactive hotspots with medical facts</p>
+            <p>• Real-time aerosol simulation</p>
+            <p>• Professional narration</p>
+            <p>• Auto-advance between sections</p>
+        </div>
+    </div>
+
+    <script>
+        // Progress tracking
+        function updateProgress() {
+            const progress = localStorage.getItem('vaporJourneyProgress') || 0;
+            const progressFill = document.getElementById('progressFill');
+            const steps = document.querySelectorAll('.step');
+            
+            // Update progress bar
+            progressFill.style.width = `${(progress / 3) * 100}%`;
+            
+            // Update step states
+            steps.forEach((step, index) => {
+                step.classList.remove('active', 'completed');
+                if (index < progress) {
+                    step.classList.add('completed');
+                } else if (index === progress) {
+                    step.classList.add('active');
+                }
+            });
+            
+            // Update start button text based on progress
+            const startBtn = document.getElementById('startBtn');
+            if (progress === 0) {
+                startBtn.textContent = 'Start Journey';
+                startBtn.href = 'journeys/mouth_final.html';
+            } else if (progress === 1) {
+                startBtn.textContent = 'Continue to Bronchi';
+                startBtn.href = 'journeys/bronchi_final.html';
+            } else if (progress === 2) {
+                startBtn.textContent = 'Continue to Lungs';
+                startBtn.href = 'journeys/lungs_final.html';
+            } else {
+                startBtn.textContent = 'Restart Journey';
+                startBtn.href = 'journeys/mouth_final.html';
+            }
+        }
+        
+        // Restart functionality
+        document.getElementById('restartBtn').addEventListener('click', function() {
+            localStorage.setItem('vaporJourneyProgress', 0);
+            updateProgress();
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateProgress();
+            
+            // Add completion tracking to each journey page
+            // This would need to be added to each individual journey file
+            console.log('Journey progress:', localStorage.getItem('vaporJourneyProgress'));
+        });
+    </script>
+</body>
+</html>

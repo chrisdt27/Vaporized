@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Bronchi Inside (Narrated + Synchronized Aerosol → Auto-Advance)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- A-Frame 1.5.0 -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <style>
+    html, body { margin:0; height:100%; background:#000; }
+    #err{
+      position:fixed; left:0; right:0; bottom:0;
+      color:#fff; background:rgba(200,0,0,.25);
+      font:12px/1.4 monospace; padding:6px 8px; display:none;
+      white-space:pre-wrap; pointer-events:none;
+    }
+    
+    /* Vaping Info Popups */
+    .vaping-popup {
+      position: fixed;
+      background: rgba(10, 5, 5, 0.95);
+      border: 2px solid #ff4444;
+      border-radius: 15px;
+      padding: 20px;
+      color: white;
+      font-family: Arial, sans-serif;
+      max-width: 320px;
+      display: none;
+      z-index: 1000;
+      box-shadow: 0 0 25px rgba(255, 68, 68, 0.6);
+      backdrop-filter: blur(5px);
+    }
+    
+    .vaping-popup h3 {
+      color: #ff6b6b;
+      margin-top: 0;
+      border-bottom: 1px solid #ff4444;
+      padding-bottom: 8px;
+      font-size: 18px;
+    }
+    
+    .vaping-popup p {
+      line-height: 1.5;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    
+    .vaping-popup ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    
+    .vaping-popup li {
+      margin-bottom: 8px;
+      line-height: 1.4;
+      font-size: 13px;
+    }
+    
+    .close-btn {
+      background: #ff4444;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    
+    .close-btn:hover {
+      background: #ff6666;
+      transform: translateY(-1px);
+    }
+
+    .warning-icon {
+      color: #ff4444;
+      font-size: 16px;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <a-scene
+    background="color: #000000"
+    renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true; sortTransparentObjects: true;"
+    vr-mode-ui="enabled: false"
+    cursor="rayOrigin: mouse"
+    raycaster="objects: .clickable"
+  >
+    <!-- Neutral lighting -->
+    <a-entity light="type: ambient; intensity: 0.55"></a-entity>
+    <a-entity light="type: directional; intensity: 0.9" position="1 2 1"></a-entity>
+
+    <!-- Camera with cursor -->
+    <a-entity id="rig" position="0 1.5 0">
+      <a-entity id="cam"
+        camera="near: 0.001; far: 1500; fov: 80"
+        look-controls="pointerLockEnabled: false"
+        position="0 0 0"
+        rotation="-90 0 0">
+        <!-- Cursor for interaction -->
+        <a-entity cursor="fuse: false; rayOrigin: mouse"
+                  raycaster="objects: .clickable; far: 20; interval: 100"
+                  position="0 0 -1"
+                  geometry="primitive: ring; radiusInner: 0.008; radiusOuter: 0.012"
+                  material="color: #FF4444; shader: flat; opacity: 0.8">
+        </a-entity>
+      </a-entity>
+    </a-entity>
+
+    <!-- Tiny cyan reference while loading -->
+    <a-entity geometry="primitive: box; width: 0.02; height: 0.02; depth: 0.02"
+              material="color: cyan; shader: flat; side: double; fog: false"
+              position="0 0 -0.6">
+    </a-entity>
+
+    <!-- Bronchi model (.glb) — corrected relative path -->
+    <a-entity id="bronchi" gltf-model="../assets/models/bronchi.glb" visible="true"></a-entity>
+
+    <!-- Vaping Info Trigger Points - Made larger and more interactive -->
+    <a-entity id="vapingTrigger1" 
+              geometry="primitive: sphere; radius: 0.15" 
+              material="color: #ff4444; opacity: 0.5; transparent: true; shader: flat"
+              position="0.5 1.0 -0.3"
+              animation="property: scale; to: 1.3 1.3 1.3; dur: 1200; dir: alternate; loop: true"
+              class="clickable"
+              data-popup="popup1"
+              sound="on: click; src: #click-sound">
+    </a-entity>
+    
+    <a-entity id="vapingTrigger2" 
+              geometry="primitive: sphere; radius: 0.15" 
+              material="color: #ff4444; opacity: 0.5; transparent: true; shader: flat"
+              position="-0.5 0.5 -0.5"
+              animation="property: scale; to: 1.3 1.3 1.3; dur: 1200; dir: alternate; loop: true"
+              class="clickable"
+              data-popup="popup2"
+              sound="on: click; src: #click-sound">
+    </a-entity>
+
+    <a-entity id="vapingTrigger3" 
+              geometry="primitive: sphere; radius: 0.15" 
+              material="color: #ff4444; opacity: 0.5; transparent: true; shader: flat"
+              position="0.0 0.8 -0.7"
+              animation="property: scale; to: 1.3 1.3 1.3; dur: 1200; dir: alternate; loop: true"
+              class="clickable"
+              data-popup="popup3"
+              sound="on: click; src: #click-sound">
+    </a-entity>
+
+    <!-- WORLD-ANCHORED aerosol field (disabled until narration plays) -->
+    <a-entity id="aeroEmitter"
+              droplet-field="enabled: false; rate: 300; life: 2600; sizeStart: 0.006; sizeEnd: 0.020;
+                             speed: 0.70; speedJitter: 0.30;
+                             sheetDist: 0.35; sheetWidth: 0.28; sheetHeight: 0.22; sheetDepth: 0.16;
+                             swirl: 0.22; swirlHz: 1.1; lateral: 0.10; drag: 0.40; max: 900">
+    </a-entity>
+
+    <!-- Click sound -->
+    <audio id="click-sound" src="https://cdn.aframe.io/360-image-gallery-boilerplate/audio/click.ogg"></audio>
+  </a-scene>
+
+  <!-- Vaping Damage Popups - BRONCHI SPECIFIC -->
+  <div id="popup1" class="vaping-popup" style="left: 50px; top: 50px;">
+    <h3>🚨 Cilia Damage & Mucus Buildup</h3>
+    <p><strong>Vaping paralyzes the bronchial cleaning system:</strong></p>
+    <ul>
+      <li><span class="warning-icon">⚠️</span> Cilia hair cells stop beating within 1 hour of vaping</li>
+      <li><span class="warning-icon">⚠️</span> Toxic particles accumulate in bronchial tubes</li>
+      <li><span class="warning-icon">⚠️</span> Mucus production increases 200-300%</li>
+      <li><span class="warning-icon">⚠️</span> Chronic "vaper's cough" develops</li>
+      <li><span class="warning-icon">⚠️</span> Natural airway clearance completely disrupted</li>
+    </ul>
+    <p><em>Cilia remain paralyzed for 4-6 hours after each vaping session</em></p>
+    <button class="close-btn" onclick="closePopup('popup1')">Close</button>
+  </div>
+
+  <div id="popup2" class="vaping-popup" style="right: 50px; top: 50px;">
+    <h3>🔥 Bronchial Inflammation & Swelling</h3>
+    <p><strong>Vaping causes immediate bronchial inflammation:</strong></p>
+    <ul>
+      <li><span class="warning-icon">⚠️</span> Airway walls swell within minutes of exposure</li>
+      <li><span class="warning-icon">⚠️</span> Bronchial tubes narrow by 25-40%</li>
+      <li><span class="warning-icon">⚠️</span> Breathing resistance increases significantly</li>
+      <li><span class="warning-icon">⚠️</span> Chronic bronchitis develops in regular users</li>
+      <li><span class="warning-icon">⚠️</span> Permanent scar tissue forms in bronchial walls</li>
+    </ul>
+    <p><em>Inflammation persists for weeks, even after quitting</em></p>
+    <button class="close-btn" onclick="closePopup('popup2')">Close</button>
+  </div>
+
+  <div id="popup3" class="vaping-popup" style="left: 50px; bottom: 50px;">
+    <h3>🦠 Infection Vulnerability</h3>
+    <p><strong>Vaping destroys bronchial defenses:</strong></p>
+    <ul>
+      <li><span class="warning-icon">⚠️</span> 350% higher risk of bronchial infections</li>
+      <li><span class="warning-icon">⚠️</span> Immune cells in bronchi become overwhelmed</li>
+      <li><span class="warning-icon">⚠️</span> Bacterial growth increases in mucus-filled airways</li>
+      <li><span class="warning-icon">⚠️</span> Recovery from bronchitis takes 3x longer</li>
+      <li><span class="warning-icon">⚠️</span> Increased susceptibility to pneumonia</li>
+    </ul>
+    <p><em>Bronchial immunity remains suppressed for months</em></p>
+    <button class="close-btn" onclick="closePopup('popup3')">Close</button>
+  </div>
+
+  <div id="err"></div>
+
+  <!-- Narration: auto-plays; auto-advance to Lung on end - corrected relative path -->
+  <audio id="narration" src="../assets/audio/bronchi_narration.mp3" autoplay preload="auto" playsinline></audio>
+
+  <script>
+    // --------- Error banner ----------
+    function showError(msg){
+      try{
+        console.error(msg);
+        const el=document.getElementById('err');
+        el.textContent=String(msg);
+        el.style.display='block';
+      }catch(e){}
+    }
+
+    // --------- Popup Management ----------
+    function showPopup(popupId) {
+      console.log('Showing popup:', popupId);
+      // Close any open popups first
+      const popups = document.querySelectorAll('.vaping-popup');
+      popups.forEach(popup => {
+        popup.style.display = 'none';
+      });
+      
+      // Show the requested popup
+      const popup = document.getElementById(popupId);
+      if (popup) {
+        popup.style.display = 'block';
+      }
+    }
+
+    function closePopup(popupId) {
+      const popup = document.getElementById(popupId);
+      if (popup) {
+        popup.style.display = 'none';
+      }
+    }
+
+    // Close popups when clicking outside
+    document.addEventListener('click', function(event) {
+      const popups = document.querySelectorAll('.vaping-popup');
+      let clickedInsidePopup = false;
+      
+      popups.forEach(popup => {
+        if (popup.contains(event.target)) {
+          clickedInsidePopup = true;
+        }
+      });
+
+      if (!clickedInsidePopup && !event.target.classList.contains('clickable')) {
+        popups.forEach(popup => {
+          popup.style.display = 'none';
+        });
+      }
+    });
+
+    // --------- Enhanced Interaction Setup ----------
+    document.addEventListener('DOMContentLoaded', function() {
+      const scene = document.querySelector('a-scene');
+      
+      scene.addEventListener('loaded', function() {
+        console.log('Scene loaded, setting up interactions...');
+        
+        // Add click handlers for vaping info triggers
+        const triggers = document.querySelectorAll('.clickable');
+        console.log('Found triggers:', triggers.length);
+        
+        triggers.forEach(trigger => {
+          // Mouse click event
+          trigger.addEventListener('click', function(evt) {
+            console.log('Trigger clicked:', this.id);
+            const popupId = this.getAttribute('data-popup');
+            showPopup(popupId);
+            evt.stopPropagation();
+          });
+
+          // Add visual feedback on hover
+          trigger.addEventListener('mouseenter', function() {
+            this.setAttribute('material', 'color', '#ff8888');
+            this.setAttribute('scale', '1.2 1.2 1.2');
+          });
+
+          trigger.addEventListener('mouseleave', function() {
+            this.setAttribute('material', 'color', '#ff4444');
+            this.setAttribute('scale', '1 1 1');
+          });
+        });
+
+        // Add keyboard shortcut to close popups (ESC key)
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape') {
+            const popups = document.querySelectorAll('.vaping-popup');
+            popups.forEach(popup => {
+              popup.style.display = 'none';
+            });
+          }
+          
+          // Debug: Log key presses
+          if (e.key === 'd' || e.key === 'D') {
+            console.log('Debug: All popups should be working');
+            console.log('Triggers:', document.querySelectorAll('.clickable').length);
+          }
+        });
+
+        // Force show that interactions are working
+        setTimeout(() => {
+          console.log('Interaction system ready - click the red spheres!');
+        }, 2000);
+      });
+    });
+
+    // --------- Soft sprite texture ----------
+    function makeSoftDotTexture(){
+      const R = 64;
+      const c = document.createElement('canvas');
+      c.width = c.height = R*2;
+      const g = c.getContext('2d');
+      const grd = g.createRadialGradient(R, R, 0, R, R, R);
+      grd.addColorStop(0.0,'rgba(255,255,255,1.0)');
+      grd.addColorStop(0.45,'rgba(255,255,255,0.7)');
+      grd.addColorStop(0.80,'rgba(255,255,255,0.12)');
+      grd.addColorStop(1.00,'rgba(255,255,255,0.0)');
+      g.fillStyle = grd; g.fillRect(0,0,c.width,c.height);
+      const tex = new THREE.CanvasTexture(c);
+      tex.anisotropy = 4; tex.needsUpdate = true;
+      return tex;
+    }
+
+    // --------- Volume particle field ----------
+    AFRAME.registerComponent('droplet-field',{
+      schema:{
+        enabled:{type:'boolean', default:false},
+        rate:{type:'number', default:300},      // droplets/sec
+        life:{type:'number', default:2600},     // ms
+        sizeStart:{type:'number', default:0.006},
+        sizeEnd:{type:'number', default:0.020},
+        speed:{type:'number', default:0.70},    // m/s forward
+        speedJitter:{type:'number', default:0.30},
+        lateral:{type:'number', default:0.10},
+        sheetDist:{type:'number', default:0.35},
+        sheetWidth:{type:'number', default:0.28},
+        sheetHeight:{type:'number', default:0.22},
+        sheetDepth:{type:'number', default:0.16},
+        swirl:{type:'number', default:0.22},
+        swirlHz:{type:'number', default:1.1},
+        drag:{type:'number', default:0.40},
+        max:{type:'number', default:900}
+      },
+      init:function(){
+        this.pool=[]; this.acc=0;
+        const tex=makeSoftDotTexture();
+        for(let i=0;i<this.data.max;i++){
+          const mat=new THREE.SpriteMaterial({
+            map:tex, color:0xffffff, transparent:true,
+            depthWrite:false, blending:THREE.AdditiveBlending, opacity:0.0
+          });
+          const s=new THREE.Sprite(mat);
+          s.visible=false; s.scale.setScalar(this.data.sizeStart);
+          this.el.object3D.add(s);
+          this.pool.push({
+            obj:s, mat:mat, alive:false, t:0,
+            vel:new THREE.Vector3(),
+            forward:new THREE.Vector3(),
+            right:new THREE.Vector3(),
+            up:new THREE.Vector3(),
+            phase: Math.random()*Math.PI*2
+          });
+        }
+        window.addEventListener('keydown',(e)=>{
+          if(e.key==='d'||e.key==='D'){
+            this.data.enabled=!this.data.enabled;
+            if(!this.data.enabled){ this.pool.forEach(p=>{p.alive=false;p.obj.visible=false;}); }
+          }
+          if(e.key==='['){ this.data.rate=Math.max(20,this.data.rate-25); }
+          if(e.key===']'){ this.data.rate=Math.min(1600,this.data.rate+25); }
+        });
+      },
+      _cameraBasis:function(out){
+        // Modified to create downward flow from top of trachea
+        out.forward.set(0, -1, 0).normalize(); // Downward direction
+        out.right.set(1, 0, 0).normalize();    // Right direction
+        out.up.set(0, 0, 1).normalize();       // Forward direction (into screen)
+        out.pos.set(0, 1.5, 0);                // Top of trachea position
+        return out;
+      },
+      spawnOne:function(){
+        const d=this.data;
+        const basis=this._basis||(this._basis={forward:new THREE.Vector3(),right:new THREE.Vector3(),up:new THREE.Vector3(),pos:new THREE.Vector3()});
+        if(!this._cameraBasis(basis)) return;
+
+        const slot=this.pool.find(p=>!p.alive); if(!slot) return;
+        slot.alive=true; slot.t=0; slot.phase=Math.random()*Math.PI*2;
+
+        const hw=d.sheetWidth*0.5, hh=d.sheetHeight*0.5, hd=d.sheetDepth*0.5;
+        // Position droplets at top of trachea, slightly above camera
+        const ox=(Math.random()*2-1)*hw, oy=0.1 + (Math.random()*2-1)*hh*0.1, oz=(Math.random()*2-1)*hd;
+
+        const spawn=new THREE.Vector3()
+          .copy(basis.pos)
+          .addScaledVector(basis.forward, -0.2) // Start slightly above
+          .addScaledVector(basis.right,  ox)
+          .addScaledVector(basis.up,     oz);
+
+        slot.obj.position.copy(spawn);
+        slot.obj.scale.setScalar(d.sizeStart);
+        slot.obj.visible=true; slot.mat.opacity=0.9;
+
+        const sp=d.speed*(1+(Math.random()*2-1)*d.speedJitter);
+        slot.vel.copy(basis.forward).multiplyScalar(Math.max(0.02, sp));
+        slot.vel.addScaledVector(basis.right,(Math.random()*2-1)*d.lateral);
+        slot.vel.addScaledVector(basis.up,(Math.random()*2-1)*d.lateral);
+      },
+      tick:function(time,dt){
+        if(!dt) return;
+        const d=this.data;
+        if(d.enabled){
+          this.acc+=dt;
+          const interval=1000/Math.max(1e-4,d.rate);
+          while(this.acc>=interval){ this.spawnOne(); this.acc-=interval; }
+        }
+        const dragFactor=Math.pow(1-THREE.MathUtils.clamp(d.drag,0,0.999), dt/1000);
+        for(const p of this.pool){
+          if(!p.alive) continue;
+          p.t+=dt; const k=THREE.MathUtils.clamp(p.t/d.life,0,1);
+
+          const t=(time*0.001);
+          const swirlX=Math.sin((t+p.phase)*Math.PI*2*d.swirlHz)*d.swirl;
+          const swirlY=Math.cos((t*0.8+p.phase*1.37)*Math.PI*2*d.swirlHz)*d.swirl;
+          p.vel.addScaledVector(p.right, swirlX*(dt/1000));
+          p.vel.addScaledVector(p.up,    swirlY*(dt/1000));
+
+          p.vel.multiplyScalar(dragFactor);
+          p.obj.position.addScaledVector(p.vel, dt/1000);
+
+          const s=d.sizeStart*(1-k)+d.sizeEnd*k;
+          p.obj.scale.set(s,s,1);
+          p.mat.opacity=0.9*(1-k);
+
+          if(k>=1){ p.alive=false; p.obj.visible=false; }
+        }
+      }
+    });
+
+    // --------- Sync droplets to narration; auto-advance to Lung on end ----------
+    (function(){
+      // CORRECTED: Points to lungs_final.html in journeys folder
+      const NEXT_URL = "../journeys/lungs_final.html?v=1";
+      const audio = document.getElementById('narration');
+      const emitter = document.getElementById('aeroEmitter');
+
+      function setDroplets(on){
+        try{ emitter.setAttribute('droplet-field','enabled', !!on); }catch(_){}
+      }
+      function goNext(){ setDroplets(false); window.location.href = NEXT_URL; }
+
+      function tryPlay(){
+        const p = audio.play();
+        if(p && typeof p.then==='function'){
+          p.then(()=>{ setDroplets(true); })
+           .catch(()=>{ });
+        }else{
+          setDroplets(true);
+        }
+      }
+
+      if(audio){
+        audio.addEventListener('play',  ()=> setDroplets(true));
+        audio.addEventListener('pause', ()=> setDroplets(false));
+        audio.addEventListener('ended', goNext);
+
+        tryPlay();
+        const resumeOnce = ()=>{ tryPlay(); window.removeEventListener('pointerdown',resumeOnce); window.removeEventListener('keydown',resumeOnce); };
+        window.addEventListener('pointerdown', resumeOnce, {once:true});
+        window.addEventListener('keydown',     resumeOnce, {once:true});
+      }
+    })();
+
+    // --------- Keep native GLB materials; double-sided & no culling ----------
+    (function () {
+      const sceneEl = document.querySelector('a-scene');
+      const modelEl = document.getElementById('bronchi');
+      const camEl   = document.getElementById('cam');
+
+      function ensureInsideVisibilityNoCulling(root) {
+        root.traverse((node) => {
+          if (node.isMesh) {
+            node.frustumCulled = false;
+            const mats = Array.isArray(node.material) ? node.material : [node.material];
+            mats.forEach((m) => { if (m && 'side' in m) { m.side = THREE.DoubleSide; m.needsUpdate = true; }});
+            try { if (node.geometry && !node.geometry.attributes.normal) node.geometry.computeVertexNormals(); } catch (_) {}
+            node.renderOrder = 1;
+          }
+        });
+      }
+
+      function centerScaleAndPlaceCameraInside(root) {
+        const bbox = new THREE.Box3().setFromObject(root);
+        const size = new THREE.Vector3(); bbox.getSize(size);
+        const center = new THREE.Vector3(); bbox.getCenter(center);
+
+        console.log(`Bronchi size (m): ${size.x.toFixed(4)} ${size.y.toFixed(4)} ${size.z.toFixed(4)}`);
+
+        root.position.sub(center);
+
+        const halfMin = Math.max(1e-6, Math.min(size.x, size.y, size.z) * 0.5);
+        const targetHalf = 0.7;
+        const s = halfMin < targetHalf ? (targetHalf / halfMin) : 1.0;
+        root.scale.multiplyScalar(s);
+
+        // Position camera at top of trachea looking down
+        try {
+          // Camera is already positioned via the rig and cam elements
+          // Just ensure it's looking in the right direction
+          camEl.object3D.lookAt(new THREE.Vector3(0, -1, 0));
+        } catch (_) {}
+
+        ensureInsideVisibilityNoCulling(root);
+      }
+
+      if (sceneEl.renderer) { sceneEl.renderer.setClearColor(0x000000, 1); }
+      else {
+        sceneEl.addEventListener('render-target-loaded', () => {
+          try { sceneEl.renderer.setClearColor(0x000000, 1); } catch (_) {}
+        });
+      }
+
+      modelEl.addEventListener('model-error', (e) => {
+        showError('Failed to load GLB at assets/models/bronchi.glb\n' +
+                  (e && e.detail && e.detail.src ? `src: ${e.detail.src}\n` : '') +
+                  (e && e.detail && e.detail.error ? `error: ${e.detail.error}` : ''));
+      });
+
+      modelEl.addEventListener('model-loaded', () => {
+        try {
+          const obj = modelEl.getObject3D('mesh');
+          if (!obj) { showError('Model loaded, but no mesh found.'); return; }
+          ensureInsideVisibilityNoCulling(obj);
+          centerScaleAndPlaceCameraInside(obj);
+          obj.traverse((n)=>{ if(n.isMesh) n.frustumCulled=false; });
+        } catch (e) {
+          showError('Post-load processing failed:\n' + e.message);
+        }
+      });
+    })();
+
+    // Progress tracking - add this to track completion
+    (function() {
+      const currentPage = window.location.pathname;
+      
+      // Set progress based on current page
+      if (currentPage.includes('bronchi_final.html')) {
+        localStorage.setItem('vaporJourneyProgress', 2);
+      }
+      
+      console.log('Journey progress updated to:', localStorage.getItem('vaporJourneyProgress'));
+    })();
+  </script>
+</body>
+</html>

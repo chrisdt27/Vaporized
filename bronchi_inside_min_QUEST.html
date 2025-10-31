@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Bronchi – QUEST READY (Autoplay + REL paths)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1, maximum-scale=1"/>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <style>
+    html, body { margin:0; height:100%; background:#000; }
+    #err{ position:fixed; left:0; right:0; bottom:0; color:#fff; background:rgba(200,0,0,.25);
+          font:12px/1.4 monospace; padding:6px 8px; display:none; white-space:pre-wrap; pointer-events:none; z-index:99999; }
+    #hint{ position:fixed; right:10px; top:8px; color:#5ac8ff; font:11px/1.4 monospace; opacity:.65; pointer-events:none; z-index:2; }
+  </style>
+</head>
+<body>
+<a-scene
+  background="color:#000000"
+  renderer="antialias:true; colorManagement:true; physicallyCorrectLights:true;"
+  xr-mode-ui="enabled: true"
+  vr-mode-ui="enterVRButton: true">
+
+  <!-- Assets (RELATIVE paths) -->
+  <a-assets timeout="20000">
+    <audio id="bronchiNarration" src="assets/audio/bronchi_narration.mp3" preload="auto" crossorigin="anonymous"></audio>
+  </a-assets>
+
+  <!-- Lights -->
+  <a-entity light="type: ambient; intensity: 0.55"></a-entity>
+  <a-entity light="type: directional; intensity: 0.9" position="1 2 1"></a-entity>
+
+  <!-- Camera rig with VR + Desktop cursors -->
+  <a-entity id="rig" position="0 0 0">
+    <a-entity id="cam"
+              camera="near:0.001; far:1000; fov:80"
+              look-controls="pointerLockEnabled:false"
+              position="0 0 0.15">
+      <!-- Desktop mouse ray -->
+      <a-entity id="mouseRay" cursor="rayOrigin: mouse"
+                raycaster="objects: .clickable; far: 8; interval: 0"></a-entity>
+      <!-- VR gaze/controller cursor -->
+      <a-entity id="vrCursor"
+                position="0 0 -0.5"
+                geometry="primitive: ring; radiusInner:0.005; radiusOuter:0.008"
+                material="color:#5ac8ff; shader: flat; opacity:0.85"
+                cursor="fuse: false; rayOrigin: entity;"
+                raycaster="objects: .clickable; far: 8">
+      </a-entity>
+    </a-entity>
+  </a-entity>
+
+  <!-- Arrow (points down, text upright) -->
+  <a-entity id="lungArrow" position="0 -0.06 -0.45" rotation="0 0 180" visible="true">
+    <a-cylinder radius="0.005" height="0.28" position="0 0.12 0"
+                material="color:#00e5ff; opacity:0.95; transparent:true; depthTest:false"></a-cylinder>
+    <a-cone radius-bottom="0.03" radius-top="0.001" height="0.07" position="0 0.26 0"
+            material="color:#00e5ff; opacity:0.98; transparent:true; depthTest:false"></a-cone>
+    <a-entity rotation="0 0 180">
+      <a-entity text="value: Toward lungs ↓; color: #bfefff; align: center; width: 1.8; wrapCount: 24"
+                position="0 -0.02 0" material="depthTest:false"></a-entity>
+    </a-entity>
+  </a-entity>
+
+  <!-- Cyan reference box -->
+  <a-entity geometry="primitive: box; width: 0.02; height: 0.02; depth: 0.02"
+            material="color: cyan; shader: flat; side: double; fog: false"
+            position="0 0 -0.6"></a-entity>
+
+  <!-- Bronchi model (REL path, no fallbacks to keep deterministic) -->
+  <a-entity id="bronchi" gltf-model="assets/models/bronchi.glb"></a-entity>
+
+  <!-- Droplets (auto-tune on mobile/Quest) -->
+  <a-entity id="aeroEmitter"></a-entity>
+
+  <!-- Narration like mouth (entity sound) -->
+  <a-entity id="narration" sound="src: #bronchiNarration; autoplay: true; positional: false; volume: 1.0;"></a-entity>
+
+</a-scene>
+
+<div id="err"></div>
+<div id="hint">Controller/gaze click = interact • L = toggle arrow • [ / ] = droplet rate -/+ • D = toggle droplets</div>
+
+<script>
+  function showError(msg){
+    try{
+      console.error(msg);
+      const el=document.getElementById('err');
+      el.textContent=String(msg);
+      el.style.display='block';
+    }catch(_){}
+  }
+
+  // Droplet field (performance-tuned)
+  AFRAME.registerComponent('droplet-field',{
+    schema:{
+      enabled:{default:true}, rate:{default:240}, life:{default:3200},
+      sizeStart:{default:0.006}, sizeEnd:{default:0.014},
+      speed:{default:0.50}, speedJitter:{default:0.25},
+      lateral:{default:0.05}, sheetDist:{default:0.18}, sheetWidth:{default:0.20},
+      sheetHeight:{default:0.16}, sheetDepth:{default:0.14},
+      swirl:{default:0.10}, swirlHz:{default:1.1}, drag:{default:0.38}, max:{default:700}
+    },
+    init:function(){
+      // Auto-tune for Quest/mobile
+      try{
+        const isMobile = AFRAME.utils.device.isMobile();
+        if(isMobile){
+          this.data.rate = 180; this.data.max = 500; this.data.life = 2800;
+        }
+      }catch(_){}
+      this.pool=[]; this.acc=0;
+      const tex=(function(){const R=64,c=document.createElement('canvas'); c.width=c.height=R*2; const g=c.getContext('2d');
+        const gr=g.createRadialGradient(R,R,0,R,R,R); gr.addColorStop(0,'rgba(255,255,255,1)');
+        gr.addColorStop(.45,'rgba(255,255,255,.7)'); gr.addColorStop(.8,'rgba(255,255,255,.12)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+        g.fillStyle=gr; g.fillRect(0,0,c.width,c.height); const t=new THREE.CanvasTexture(c); t.anisotropy=4; t.needsUpdate=true; return t; })();
+      for(let i=0;i<this.data.max;i++){
+        const mat=new THREE.SpriteMaterial({map:tex, color:0xffffff, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, opacity:0});
+        const s=new THREE.Sprite(mat); s.visible=false; s.scale.setScalar(this.data.sizeStart);
+        this.el.object3D.add(s);
+        this.pool.push({obj:s, mat:mat, alive:false, t:0, vel:new THREE.Vector3(), phase:Math.random()*Math.PI*2});
+      }
+      window.addEventListener('keydown',(e)=>{
+        if(e.key==='d'||e.key==='D') this.data.enabled=!this.data.enabled;
+        if(e.key==='[') this.data.rate=Math.max(40,this.data.rate-25);
+        if(e.key===']') this.data.rate=Math.min(1500,this.data.rate+25);
+      });
+      this.tmp={pos:new THREE.Vector3(), f:new THREE.Vector3(), r:new THREE.Vector3(), u:new THREE.Vector3()};
+    },
+    _basis:function(out){
+      const cam=document.getElementById('cam'); if(!cam) return null;
+      const m=cam.object3D.matrixWorld;
+      out.f.set(-m.elements[8],-m.elements[9],-m.elements[10]).normalize();
+      out.r.set(m.elements[0],m.elements[1],m.elements[2]).normalize();
+      out.u.set(m.elements[4],m.elements[5],m.elements[6]).normalize();
+      out.pos.set(m.elements[12],m.elements[13],m.elements[14]); return out;
+    },
+    _spawn:function(){
+      const d=this.data, b=this.tmp; if(!this._basis(b)) return;
+      const slot=this.pool.find(p=>!p.alive); if(!slot) return;
+      slot.alive=true; slot.t=0;
+      const hw=d.sheetWidth*.5, hh=d.sheetHeight*.5, hd=d.sheetDepth*.5;
+      const ox=(Math.random()*2-1)*hw, oy=(Math.random()*2-1)*hh, oz=-d.sheetDist+(Math.random()*2-1)*hd;
+      const spawn=new THREE.Vector3().copy(b.pos).addScaledVector(b.f,oz).addScaledVector(b.r,ox).addScaledVector(b.u,oy);
+      slot.obj.position.copy(spawn); slot.obj.visible=true; slot.obj.scale.setScalar(d.sizeStart); slot.mat.opacity=.9;
+      slot.vel=new THREE.Vector3().copy(b.f).multiplyScalar(d.speed*(.9+.3*Math.random()));
+      slot.vel.addScaledVector(b.r,(Math.random()*2-1)*d.lateral); slot.vel.addScaledVector(b.u,(Math.random()*2-1)*d.lateral);
+      slot.phase=Math.random()*Math.PI*2;
+    },
+    tick:function(time,dt){
+      if(!dt) return; const d=this.data;
+      if(d.enabled){ this.acc+=dt; const interval=1000/Math.max(1e-4,d.rate); while(this.acc>=interval){ this._spawn(); this.acc-=interval; } }
+      const drag=(1-d.drag);
+      for(const p of this.pool){ if(!p.alive) continue; p.t+=dt;
+        const k=Math.min(1,p.t/d.life); const s=d.sizeStart*(1-k)+d.sizeEnd*k; p.obj.scale.set(s,s,1);
+        const swirlX=Math.sin((time*.001+p.phase)*Math.PI*2*d.swirlHz)*d.swirl;
+        const swirlY=Math.cos((time*.0009+p.phase*1.37)*Math.PI*2*d.swirlHz)*d.swirl;
+        p.vel.x+=swirlX*(dt/1000); p.vel.y+=swirlY*(dt/1000); p.vel.multiplyScalar(Math.pow(drag,dt/1000));
+        p.obj.position.addScaledVector(p.vel,dt/1000); p.mat.opacity=.9*(1-k);
+        if(k>=1){ p.alive=false; p.obj.visible=false; }
+      }
+    }
+  });
+
+  // Init droplets component on emitter
+  document.getElementById('aeroEmitter').setAttribute('droplet-field','');
+
+  // Ensure narration starts on desktop AND in VR (Quest requires a user gesture; 'enter-vr' counts)
+  (function(){
+    const sEl = document.getElementById('narration');
+    const scene = document.querySelector('a-scene');
+    // Desktop: attempt once scene is ready
+    scene.addEventListener('loaded', ()=>{
+      const c = sEl.components.sound;
+      if(c && c.playing===false){ try{ c.playSound(); }catch(_){ /* silently ignore */ } }
+    });
+    // Quest: when entering VR, trigger play (user gesture-safe)
+    scene.addEventListener('enter-vr', ()=>{
+      const c = sEl.components.sound;
+      if(c && c.playing===false){ try{ c.playSound(); }catch(_){ } }
+    });
+  })();
+
+  // Model-load error surface
+  (function(){
+    const m = document.getElementById('bronchi');
+    m.addEventListener('model-error', (e)=>{
+      showError('Failed to load model at "assets/models/bronchi.glb". Confirm the file exists there.');
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mouth – QUEST READY v7 (Load-Safe + Bounded Move)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1, maximum-scale=1"/>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <style>
+    html, body { margin:0; height:100%; background:#000; }
+    #err{ position:fixed; left:0; right:0; bottom:0; color:#fff; background:rgba(200,0,0,.28);
+          font:12px/1.5 monospace; padding:6px 8px; display:none; white-space:pre-wrap; z-index:4; }
+    .callout { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: min(540px, 90vw); max-height: 72vh; overflow: auto; background: #fff; color: #111;
+      border: 2px solid #000; border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.5);
+      font: 15px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 14px 16px; display: none; z-index: 5; }
+  </style>
+</head>
+<body>
+<a-scene background="color:#050505" renderer="antialias:true; colorManagement:true; physicallyCorrectLights:true;"
+         xr-mode-ui="enabled:true" vr-mode-ui="enterVRButton:true" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
+
+  <a-assets timeout="20000">
+    <audio id="mouthNarration" src="../assets/audio/mouth_narration.mp3" preload="auto" crossorigin="anonymous"></audio>
+  </a-assets>
+
+  <!-- Lights (brighter, fill + key) -->
+  <a-entity light="type: ambient; intensity:0.9; color:#ffffff"></a-entity>
+  <a-entity light="type: directional; intensity:1.0; color:#ffffff" position="1.5 2.2 1.2"></a-entity>
+  <a-entity light="type: directional; intensity:0.6; color:#ffffff" position="-1.3 -0.8 -0.6"></a-entity>
+
+  <!-- Rig: movement disabled by default and bounded -->
+  <a-entity id="rig" position="0 0 0">
+    <a-entity id="cam" camera="near:0.001; far:2000; fov:80"
+              look-controls="pointerLockEnabled:false; touchEnabled:true; mouseEnabled:true"
+              position="0 -0.010 0.090"></a-entity>
+  </a-entity>
+
+  <!-- Model injected via JS -->
+  <a-entity id="mouthModel"></a-entity>
+
+  <!-- Droplets -->
+  <a-entity id="aeroEmitter"></a-entity>
+
+  <!-- Hotspots -->
+  <a-entity id="hs-teeth"></a-entity>
+  <a-entity id="hs-tongue"></a-entity>
+  <a-entity id="hs-cheek"></a-entity>
+
+  <!-- Narration -->
+  <a-entity id="narration" sound="src: #mouthNarration; autoplay: true; positional: false; volume: 1.0;"></a-entity>
+</a-scene>
+
+<div id="err"></div>
+
+<!-- Callouts -->
+<div id="callout-teeth" class="callout"><h3>Teeth & Enamel Film</h3>
+  <p>Warm aerosol forms a hygroscopic film (propylene glycol + glycerin) on teeth. It captures nicotine, flavor chemicals, and micro‑metals from the coil, increasing plaque adhesion and enamel exposure to acids.</p>
+  <button data-close="callout-teeth">Close</button></div>
+<div id="callout-tongue" class="callout"><h3>Tongue & Taste Receptors</h3>
+  <p>Deposited droplets temporarily blunt taste receptors and dehydrate the tongue surface, degrading taste acuity and mouthfeel while concentrating irritants.</p>
+  <button data-close="callout-tongue">Close</button></div>
+<div id="callout-cheek" class="callout"><h3>Cheek/Labial Mucosa</h3>
+  <p>Sticky residues coat the lining and increase contact time for aldehydes (e.g., formaldehyde, acetaldehyde, acrolein), aggravating local irritation and dryness.</p>
+  <button data-close="callout-cheek">Close</button></div>
+
+<script>
+  function showError(msg){ try{ console.error(msg); const el=document.getElementById('err'); el.textContent=String(msg); el.style.display='block'; }catch(_){ } }
+
+  // --- Hardened autoplay (desktop + Quest) ---
+  (function(){
+    const scene=document.querySelector('a-scene');
+    const sEl=document.getElementById('narration');
+    let tries=0;
+    function ensureContext(){
+      try{ if(AFRAME.audioContext && AFRAME.audioContext.state!=='running' && AFRAME.audioContext.resume){ AFRAME.audioContext.resume(); } }catch(_){}
+    }
+    function attempt(){
+      ensureContext();
+      const c=sEl.components && sEl.components.sound;
+      if(c && !c.playing){ try{ c.playSound(); }catch(_){} }
+      if(++tries<40) setTimeout(attempt,125);
+    }
+    ['loaded','enter-vr','enter-ar'].forEach(e=>scene.addEventListener(e,attempt));
+    ['pointerdown','touchstart','keydown','click','visibilitychange'].forEach(e=>document.addEventListener(e,attempt,{passive:true}));
+    window.addEventListener('load',attempt);
+    window.addEventListener('keydown',(e)=>{ if(e.key==='n'||e.key==='N'){ const c=sEl.components.sound; if(c){ try{ c.stopSound(); }catch(_){}
+      try{ c.playSound(); }catch(_){ } } } });
+    
+    // Auto-advance to bronchi_final.html when narration ends
+    sEl.addEventListener('sound-ended', function() {
+      console.log('Narration ended, advancing to bronchi_final.html');
+      window.location.href = 'bronchi_final.html';
+    });
+  })();
+
+  // --- Model load, double-sided, center & scale ---
+  (function(){
+    const modelEl=document.getElementById('mouthModel'); modelEl.setAttribute('gltf-model','../assets/models/mouth.glb');
+    modelEl.addEventListener('model-error', ()=>showError('Failed to load ../assets/models/mouth.glb — check path/casing.'));
+    modelEl.addEventListener('model-loaded', ()=>{
+      const mesh=modelEl.getObject3D('mesh'); if(!mesh){ showError('Mouth loaded but no mesh'); return; }
+      mesh.traverse(n=>{ if(n.isMesh){ n.frustumCulled=false; const mats=Array.isArray(n.material)?n.material:[n.material];
+        mats.forEach(m=>{ if(m&&"side"in m){ m.side=THREE.DoubleSide; m.needsUpdate=true; } }); } });
+      const bbox=new THREE.Box3().setFromObject(mesh); const size=bbox.getSize(new THREE.Vector3()); const center=bbox.getCenter(new THREE.Vector3());
+      mesh.position.sub(center);
+      const halfMin=Math.min(size.x,size.y,size.z)/2; const s=(halfMin>1e-6)?(0.9/halfMin):1.0; mesh.scale.multiplyScalar(s);
+    });
+  })();
+
+  // --- Hotspots (bright, pulsing, billboard) - REMOVED "Learn More" text ---
+  AFRAME.registerComponent('face-camera',{ tick:function(){ const cam=document.getElementById('cam'); if(cam&&this.el.object3D){ this.el.object3D.lookAt(cam.object3D.getWorldPosition(new THREE.Vector3())); } } });
+  function addHotspot(id, pos){
+    const el=document.getElementById(id); if(!el) return;
+    const disc=document.createElement('a-circle'); disc.setAttribute('radius','0.04'); disc.setAttribute('color','#d40000');
+    disc.setAttribute('material','shader: flat; opacity: 0.99'); disc.setAttribute('animation__pulse','property: scale; dir: alternate; dur: 650; easing: easeInOutSine; loop: true; to: 1.35 1.35 1.35');
+    disc.setAttribute('face-camera',''); el.appendChild(disc);
+    // REMOVED the label element that contained "Learn More" text
+    const hit=document.createElement('a-sphere'); hit.setAttribute('radius','0.10'); hit.setAttribute('material','color:#fff; opacity:0; transparent:true'); hit.classList.add('clickable'); el.appendChild(hit);
+    el.setAttribute('position', pos);
+    el.addEventListener('click',()=>{ const box=document.getElementById('callout-'+id.split('hs-')[1]); if(box) box.style.display='block'; });
+  }
+  addHotspot('hs-teeth',  '0.12 0.05 -0.34');
+  addHotspot('hs-tongue', '0.00 -0.03 -0.42');
+  addHotspot('hs-cheek',  '-0.14 0.06 -0.28');
+  document.querySelectorAll('.callout button').forEach(btn=>{ btn.addEventListener('click',()=>{ const t=btn.getAttribute('data-close'); const box=document.getElementById(t); if(box) box.style.display='none'; }); });
+
+  // --- Droplets ---
+  AFRAME.registerComponent('droplet-field',{
+    schema:{ enabled:{default:true}, rate:{default:260}, life:{default:3200}, sizeStart:{default:0.006}, sizeEnd:{default:0.014},
+             speed:{default:0.50}, speedJitter:{default:0.25}, lateral:{default:0.05}, sheetDist:{default:0.18}, sheetWidth:{default:0.22},
+             sheetHeight:{default:0.18}, sheetDepth:{default:0.14}, swirl:{default:0.10}, swirlHz:{default:1.1}, drag:{default:0.38}, max:{default:720} },
+    init:function(){
+      try{ if(AFRAME.utils.device && AFRAME.utils.device.isMobile()){ this.data.rate=190; this.data.max=520; this.data.life=2800; } }catch(_){}
+      this.pool=[]; this.acc=0;
+      const tex=(function(){const R=64,c=document.createElement('canvas'); c.width=c.height=R*2; const g=c.getContext('2d');
+        const gr=g.createRadialGradient(R,R,0,R,R,R); gr.addColorStop(0,'rgba(255,255,255,1)');
+        gr.addColorStop(.45,'rgba(255,255,255,.7)'); gr.addColorStop(.8,'rgba(255,255,255,.12)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+        g.fillStyle=gr; g.fillRect(0,0,c.width,c.height); const t=new THREE.CanvasTexture(c); t.anisotropy=4; t.needsUpdate=true; return t; })();
+      for(let i=0;i<this.data.max;i++){
+        const mat=new THREE.SpriteMaterial({map:tex, color:0xffffff, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, opacity:0});
+        const s=new THREE.Sprite(mat); s.visible=false; s.scale.setScalar(this.data.sizeStart);
+        this.el.object3D.add(s);
+        this.pool.push({obj:s, mat:mat, alive:false, t:0, vel:new THREE.Vector3(), phase:Math.random()*Math.PI*2});
+      }
+      window.addEventListener('keydown',(e)=>{
+        if(e.key==='d'||e.key==='D') this.data.enabled=!this.data.enabled;
+        if(e.key==='[') this.data.rate=Math.max(40,this.data.rate-25);
+        if(e.key===']') this.data.rate=Math.min(1500,this.data.rate+25);
+      });
+      this.tmp={pos:new THREE.Vector3(), f:new THREE.Vector3(), r:new THREE.Vector3(), u:new THREE.Vector3()};
+    },
+    _basis:function(out){
+      const cam=document.getElementById('cam'); if(!cam) return null;
+      const m=cam.object3D.matrixWorld;
+      out.f.set(-m.elements[8],-m.elements[9],-m.elements[10]).normalize();
+      out.r.set(m.elements[0],m.elements[1],m.elements[2]).normalize();
+      out.u.set(m.elements[4],m.elements[5],m.elements[6]).normalize();
+      out.pos.set(m.elements[12],m.elements[13],m.elements[14]);
+      return out;
+    },
+    _spawn:function(){
+      const d=this.data, b=this.tmp; if(!this._basis(b)) return;
+      const slot=this.pool.find(p=>!p.alive); if(!slot) return;
+      slot.alive=true; slot.t=0;
+      const hw=d.sheetWidth*.5, hh=d.sheetHeight*.5, hd=d.sheetDepth*.5;
+      const ox=(Math.random()*2-1)*hw, oy=(Math.random()*2-1)*hh, oz=-d.sheetDist+(Math.random()*2-1)*hd;
+      const spawn=new THREE.Vector3().copy(b.pos).addScaledVector(b.f,oz).addScaledVector(b.r,ox).addScaledVector(b.u,oy);
+      slot.obj.position.copy(spawn); slot.obj.visible=true; slot.obj.scale.setScalar(d.sizeStart); slot.mat.opacity=.9;
+      slot.vel=new THREE.Vector3().copy(b.f).multiplyScalar(d.speed*(.9+.3*Math.random()));
+      slot.vel.addScaledVector(b.r,(Math.random()*2-1)*d.lateral); slot.vel.addScaledVector(b.u,(Math.random()*2-1)*d.lateral);
+      slot.phase=Math.random()*Math.PI*2;
+    },
+    tick:function(time,dt){
+      if(!dt) return;
+      const d=this.data;
+      if(d.enabled){
+        this.acc+=dt; const interval=1000/Math.max(1e-4,d.rate);
+        while(this.acc>=interval){ this._spawn(); this.acc-=interval; }
+      }
+      const drag=(1-d.drag);
+      for(const p of this.pool){
+        if(!p.alive) continue;
+        p.t+=dt;
+        const k=Math.min(1,p.t/d.life);
+        const s=d.sizeStart*(1-k)+d.sizeEnd*k;
+        p.obj.scale.set(s,s,1);
+        const swirlX=Math.sin((time*.001+p.phase)*Math.PI*2*d.swirlHz)*d.swirl;
+        const swirlY=Math.cos((time*.0009+p.phase*1.37)*Math.PI*2*d.swirlHz)*d.swirl;
+        p.vel.x+=swirlX*(dt/1000);
+        p.vel.y+=swirlY*(dt/1000);
+        p.vel.multiplyScalar(Math.pow(drag,dt/1000));
+        p.obj.position.addScaledVector(p.vel,dt/1000);
+        p.mat.opacity=.9*(1-k);
+        if(k>=1){ p.alive=false; p.obj.visible=false; }
+      }
+    }
+  });
+  document.getElementById('aeroEmitter').setAttribute('droplet-field','');
+
+  // --- Bounded WASD toggle (OFF by default) ---
+  AFRAME.registerComponent('bounded-move',{
+    schema:{enabled:{default:false}, speed:{default:1.1}, minX:{default:-0.35}, maxX:{default:0.35}, minY:{default:-0.10}, maxY:{default:0.10}, minZ:{default:0.00}, maxZ:{default:0.45}},
+    init:function(){
+      this.keys={}; window.addEventListener('keydown',(e)=>{ this.keys[e.code]=true; });
+      window.addEventListener('keyup',(e)=>{ this.keys[e.code]=false; });
+    },
+    tick:function(t,dt){
+      if(!this.data.enabled || !dt) return;
+      const el=this.el; const p=el.object3D.position; const v= (this.data.speed*dt/1000);
+      // WASD-like control in camera local frame
+      const cam=document.getElementById('cam'); if(!cam) return; const dir=new THREE.Vector3();
+      if(this.keys['KeyW']){ cam.object3D.getWorldDirection(dir); p.addScaledVector(dir, v); }
+      if(this.keys['KeyS']){ cam.object3D.getWorldDirection(dir); p.addScaledVector(dir, -v); }
+      if(this.keys['KeyA']){ cam.object3D.getWorldDirection(dir); dir.cross(cam.object3D.up).normalize(); p.addScaledVector(dir, -v); }
+      if(this.keys['KeyD']){ cam.object3D.getWorldDirection(dir); dir.cross(cam.object3D.up).normalize(); p.addScaledVector(dir, v); }
+      // Clamp to bounds
+      p.x=Math.min(this.data.maxX, Math.max(this.data.minX, p.x));
+      p.y=Math.min(this.data.maxY, Math.max(this.data.minY, p.y));
+      p.z=Math.min(this.data.maxZ, Math.max(this.data.minZ, p.z));
+    }
+  });
+  const rig=document.getElementById('rig'); rig.setAttribute('bounded-move','enabled:false');
+  window.addEventListener('keydown',(e)=>{
+    if(e.key==='m'||e.key==='M'){
+      const comp=rig.components['bounded-move']; const now=!comp.data.enabled; comp.data.enabled=now;
+    }
+    if(e.key==='p'||e.key==='P'){ const canvas=document.querySelector('a-scene').canvas; if(!canvas) return;
+      if(document.pointerLockElement!==canvas){ canvas.requestPointerLock(); } else { document.exitPointerLock(); } }
+  });
+
+  // Progress tracking
+  (function() {
+    const currentPage = window.location.pathname;
+    
+    // Set progress based on current page
+    if (currentPage.includes('mouth.html')) {
+      localStorage.setItem('vaporJourneyProgress', 1);
+    }
+    
+    console.log('Journey progress updated to:', localStorage.getItem('vaporJourneyProgress'));
+  })();
+</script>
+</body>
+</html>

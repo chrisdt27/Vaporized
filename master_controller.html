@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vaporized VR - Complete Experience</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; }
+        #start-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; color: white; z-index: 10000;
+        }
+        .title { font-size: 3em; margin-bottom: 20px; text-align: center; }
+        .subtitle { font-size: 1.2em; margin-bottom: 40px; opacity: 0.8; }
+        .start-btn { 
+            background: #4CAF50; color: white; padding: 20px 40px; 
+            font-size: 1.5em; border: none; border-radius: 50px;
+            cursor: pointer; transition: all 0.3s;
+        }
+        .start-btn:hover { background: #45a049; transform: scale(1.05); }
+        .scene-select { margin-top: 30px; display: flex; gap: 15px; }
+        .scene-btn { 
+            background: rgba(255,255,255,0.2); color: white; padding: 10px 20px;
+            border: 2px solid white; border-radius: 25px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <div class="title">VAPORIZED VR</div>
+        <div class="subtitle">An Immersive Journey Through Vaping Effects</div>
+        <button class="start-btn" onclick="startFullExperience()">BEGIN EXPERIENCE</button>
+        
+        <div class="scene-select">
+            <button class="scene-btn" onclick="loadScene('part1')">Part 1: Body Journey</button>
+            <button class="scene-btn" onclick="loadScene('classroom')">Classroom</button>
+            <button class="scene-btn" onclick="loadScene('brain')">Brain Anatomy</button>
+        </div>
+    </div>
+
+    <!-- Hidden iframe for seamless transitions -->
+    <iframe id="scene-frame" style="display: none; width: 100%; height: 100%; border: none;"></iframe>
+
+    <script>
+        function startFullExperience() {
+            document.getElementById('start-screen').style.display = 'none';
+            loadScene('part1');
+        }
+
+        function loadScene(scene) {
+            const frame = document.getElementById('scene-frame');
+            frame.style.display = 'block';
+            
+            const scenes = {
+                'part1': 'Part 1.html',
+                'classroom': '../vape_on_the_brain_vr/Classroom/classroom_scene.html',
+                'brain': '../vape_on_the_brain_vr/Classroom/brain_scene_vr_conservative_merge.html'
+            };
+
+            frame.src = scenes[scene];
+            
+            // Listen for completion messages from loaded scenes
+            window.addEventListener('message', function(event) {
+                if (event.data === 'SCENE_COMPLETE') {
+                    handleSceneCompletion(scene);
+                }
+            });
+        }
+
+        function handleSceneCompletion(currentScene) {
+            const nextScenes = {
+                'part1': 'classroom',
+                'classroom': 'brain',
+                'brain': 'part1' // or back to start
+            };
+            
+            if (nextScenes[currentScene]) {
+                loadScene(nextScenes[currentScene]);
+            }
+        }
+
+        // Allow direct access via URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const scene = urlParams.get('scene');
+        if (scene) {
+            document.getElementById('start-screen').style.display = 'none';
+            loadScene(scene);
+        }
+    </script>
+</body>
+</html>

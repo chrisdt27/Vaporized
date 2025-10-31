@@ -1,0 +1,30 @@
+{
+  "A": {
+    "x": 0.01338,
+    "y": 1.4454,
+    "z": -1.47909,
+    "title": "Prefrontal Cortex",
+    "body": "Executive function, attention, and impulse control are disrupted by nicotine\u2019s modulation of dopamine and acetylcholine."
+  },
+  "B": {
+    "x": 0.38454,
+    "y": 1.15155,
+    "z": -2.06596,
+    "title": "Hippocampus",
+    "body": "Nicotine alters synaptic plasticity underlying memory formation; repeated exposure reinforces contextual cues."
+  },
+  "C": {
+    "x": 0.35478,
+    "y": 1.27018,
+    "z": -1.80865,
+    "title": "Nucleus Accumbens",
+    "body": "Dopamine surges here reinforce vaping as rewarding\u2014driving craving and habit loops."
+  },
+  "D": {
+    "x": 0.37193,
+    "y": 1.20965,
+    "z": -1.88388,
+    "title": "Amygdala",
+    "body": "Emotion\u2013cue pairing strengthens triggers; stress heightens relapse risk."
+  }
+}

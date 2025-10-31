@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Vaporized — Classroom → Brain</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html,body{margin:0;height:100%;background:#000;font-family:system-ui,Segoe UI,Arial;overflow:hidden}
+    #classroomStage{position:fixed;inset:0;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center}
+    video.bg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:90vw;height:auto;max-height:80vh;object-fit:contain;background:#000}
+    #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)}
+    #play{ width:96px;height:96px;border-radius:50%;border:0;background:#fff;cursor:pointer;position:relative;box-shadow:0 8px 24px rgba(0,0,0,.45) }
+    #play::after{ content:"";position:absolute;left:40px;top:30px;border-left:24px solid #000;border-top:14px solid transparent;border-bottom:14px solid transparent;width:0;height:0 }
+    #continue{ position:fixed;right:16px;bottom:16px;display:none;background:#23c2ff;color:#001;font-weight:800;border:0;border-radius:10px;padding:10px 14px;cursor:pointer }
+    #err{position:fixed;left:0;right:0;top:0;background:rgba(200,0,0,.9);padding:8px 10px;font-size:13px;display:none;white-space:pre-wrap}
+    #brainWrap{position:fixed;inset:0;display:none;background:#fff}
+    #brainFrame{position:absolute;inset:0;border:0;width:100%;height:100%;outline:none}
+    #skip{position:fixed;left:16px;bottom:16px;background:#111;color:#eee;border:1px solid #333;border-radius:10px;padding:8px 12px;cursor:pointer;opacity:.7}
+    #skip:hover{opacity:1}
+    #focusHint{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;background:rgba(0,0,0,.6);color:#fff;padding:8px 12px;border-radius:8px;display:none}
+  </style>
+</head>
+<body>
+
+<div id="classroomStage">
+  <video id="bg" class="bg" preload="auto" playsinline></video>
+  <div id="gate"><button id="play" aria-label="Play"></button></div>
+  <button id="continue" type="button">Continue → Enter Brain</button>
+  <button id="skip" type="button" title="Skip video and enter brain">Skip</button>
+  <div id="err"></div>
+</div>
+
+<div id="brainWrap">
+  <iframe id="brainFrame"
+          src="about:blank"
+          data-src="brain_scene_vr_conservative_merge.html"
+          allow="autoplay; fullscreen; xr-spatial-tracking; accelerometer; gyroscope; gamepad"
+          allowfullscreen
+          tabindex="0"
+          referrerpolicy="no-referrer">
+  </iframe>
+  <div id="focusHint">Tip: click once in the scene to take control (arrows to rotate, mouse wheel to zoom)</div>
+</div>
+
+<script>
+(function(){
+  const params=new URLSearchParams(location.search);
+  const SKIP = params.get('brain')==='1' || location.hash==='#brain';
+  const BG_SRC = 'assets/video/classroom.mp4';
+  const video = document.getElementById('bg');
+  const gate  = document.getElementById('gate');
+  const play  = document.getElementById('play');
+  const btn   = document.getElementById('continue');
+  const err   = document.getElementById('err');
+  const skip  = document.getElementById('skip');
+  const wrap  = document.getElementById('brainWrap');
+  const frame = document.getElementById('brainFrame');
+  const hint  = document.getElementById('focusHint');
+
+  function loadBrain(){
+    if(frame.src === 'about:blank' || frame.src === window.location.origin + '/about:blank'){
+      frame.src = frame.getAttribute('data-src');
+      frame.addEventListener('load', ()=>{
+        try{ frame.contentWindow.focus(); }catch(_){}
+        hint.style.display='block';
+        setTimeout(()=>{ hint.style.display='none'; }, 3000);
+      }, {once:true});
+    }
+  }
+  function focusBrain(){
+    try{ frame.focus(); frame.contentWindow && frame.contentWindow.focus && frame.contentWindow.focus(); }catch(_){}
+  }
+  function enterBrain(){
+    document.getElementById('classroomStage').style.display='none';
+    wrap.style.display='block';
+    loadBrain();
+    setTimeout(focusBrain, 50);
+    setTimeout(focusBrain, 300);
+  }
+
+  if(SKIP){
+    enterBrain();
+    return;
+  }
+
+  video.src = BG_SRC; video.loop=false; video.muted=false;
+  video.addEventListener('ended', ()=>{ btn.style.display='inline-block'; });
+  video.addEventListener('error', ()=>{
+    err.textContent='Could not load classroom video. Skipping to brain…';
+    err.style.display='block';
+    setTimeout(enterBrain, 500);
+  });
+
+  play.addEventListener('click', ()=>{
+    gate.style.display='none';
+    const p = video.play();
+    if(p && p.catch){ p.catch(()=>{ btn.style.display='inline-block'; });}
+  });
+
+  btn.addEventListener('click', enterBrain);
+  skip.addEventListener('click', enterBrain);
+
+  setTimeout(()=>{ btn.style.display='inline-block'; }, 12000);
+
+  function forwardKey(e){
+    if(wrap.style.display!=='block') return;
+    if(document.activeElement !== frame){
+      try{
+        frame.contentWindow && frame.contentWindow.dispatchEvent(new KeyboardEvent('keydown', {key:e.key, code:e.code, bubbles:true}));
+      }catch(_){}
+    }
+  }
+  function forwardWheel(e){
+    if(wrap.style.display!=='block') return;
+    if(document.activeElement !== frame){
+      try{
+        frame.contentWindow && frame.contentWindow.dispatchEvent(new WheelEvent('wheel', {deltaY:e.deltaY, bubbles:true}));
+      }catch(_){}
+    }
+  }
+  window.addEventListener('keydown', forwardKey);
+  window.addEventListener('wheel', forwardWheel, {passive:true});
+
+  wrap.addEventListener('mousedown', focusBrain);
+  wrap.addEventListener('touchstart', focusBrain, {passive:true});
+
+  document.addEventListener('keydown',(e)=>{
+    if ((e.key==='Enter' || e.key===' ') && btn.style.display==='inline-block'){ e.preventDefault(); btn.click(); }
+  });
+})();
+</script>
+</body>
+</html>

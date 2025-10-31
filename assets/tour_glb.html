@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Vape on the Brain — GLB Tour (Screen-wide aerosol)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+  html,body{margin:0;height:100%;background:#000;color:#e8ecf3;font-family:system-ui,Segoe UI,Roboto,Arial}
+  #hud{position:fixed;left:12px;right:12px;top:12px;background:rgba(12,16,26,.9);border:1px solid rgba(255,255,255,.08);
+       border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;z-index:5;gap:12px;flex-wrap:wrap}
+  .muted{opacity:.8}.ok{color:#22c55e}.warn{color:#f59e0b}.err{color:#ef4444}
+  .btn{background:#2563eb;border:none;color:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:800}
+  .btn:hover{filter:brightness(1.05)}
+  .k{background:#0f172a;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:4px 8px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  input[type="range"]{accent-color:#2563eb}
+  a-scene{position:fixed;inset:0}
+</style>
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+</head>
+<body>
+<div id="hud">
+  <div class="row">
+    <div><b>Vape on the Brain — GLB Tour</b></div>
+    <div id="sceneName" class="k">Scene: (loading)</div>
+    <div id="timer" class="k">30s</div>
+  </div>
+  <div class="row">
+    <button id="insideBtn" class="btn" title="Re-assert inside view">Inside</button>
+    <button id="sideBtn" class="btn" title="Toggle inner-surface rendering">BackSide</button>
+    <button id="aeroBtn" class="btn" title="Toggle aerosol on/off">Aerosol: ON</button>
+    <label class="k" style="padding:6px 10px;display:flex;gap:8px;align-items:center">
+      Density
+      <input id="density" type="range" min="0" max="100" value="70"/>
+      <span id="densityVal" style="min-width:32px;text-align:right">70%</span>
+    </label>
+    <button id="nextBtn" class="btn">Next ▶</button>
+  </div>
+</div>
+<div id="status" class="muted" style="position:fixed;left:12px;right:12px;top:64px;z-index:5;"></div>
+
+<a-scene background="color:#000" renderer="antialias:true;physicallyCorrectLights:true;colorManagement:true">
+  <!-- Player rig + camera -->
+  <a-entity id="rig" wasd-controls="enabled:true; acceleration:15">
+    <a-entity id="cam" camera="active:true" look-controls="pointerLockEnabled:false"></a-entity>
+    <!-- Emitter rig: follows player -->
+    <a-entity id="aeroRig" position="0 0 0" rotation="0 0 0">
+      <a-entity id="aerosol" position="0 0 0" rotation="0 0 0"></a-entity>
+    </a-entity>
+  </a-entity>
+
+  <!-- Lighting -->
+  <a-entity light="type:ambient;intensity:1.0"></a-entity>
+  <a-entity light="type:directional;intensity:1.05" position="2 3 2"></a-entity>
+  <a-entity light="type:directional;intensity:.8" position="-2 1 3"></a-entity>
+
+  <!-- Background haze for lungs -->
+  <a-entity id="haze" position="0 0 0"></a-entity>
+
+  <!-- Model holder -->
+  <a-entity id="model"></a-entity>
+</a-scene>
+
+<script>
+/* =========================
+   Scenes + presets
+   ========================= */
+const SCENES=[
+  {name:"Mouth / Throat", src:"mouth.glb",   side:"DoubleSide",  aerosol:"mouth"},
+  {name:"Bronchi",        src:"Bronchi.glb", side:"BackSide",    aerosol:"bronchi"},
+  {name:"Lung",           src:"Lung.glb",    side:"DoubleSide",  aerosol:"lung"},
+];
+const $=s=>document.querySelector(s);
+const setStatus=(m,c="muted")=>{const el=$("#status");el.className=c;el.textContent=m;};
+const setSceneName=n=>$("#sceneName").textContent="Scene: "+n;
+
+let idx=0, timer=null, seconds=30, currentSide="DoubleSide", aerosolOn=true;
+
+/* ======= Fit, materials, inside-view ======= */
+function fitAndCenter(obj,target=2.5){
+  const T=AFRAME.THREE, box=new T.Box3().setFromObject(obj);
+  if(box.isEmpty()) return false;
+  const size=new T.Vector3(); box.getSize(size);
+  const center=new T.Vector3(); box.getCenter(center);
+  obj.position.sub(center);
+  const maxDim=Math.max(size.x,size.y,size.z)||1e-6;
+  obj.scale.setScalar(target/maxDim);
+  return true;
+}
+function applySide(obj, sideName){
+  const THREE = AFRAME.THREE;
+  const side = sideName==="BackSide" ? THREE.BackSide :
+               sideName==="FrontSide" ? THREE.FrontSide : THREE.DoubleSide;
+  obj.traverse(n=>{
+    if(n.isMesh&&n.material){
+      n.material.side=side;
+      if(n.material.transparent&&typeof n.material.opacity==="number"){
+        n.material.opacity=Math.max(n.material.opacity,0.15);
+      }
+      if(n.material.map){n.material.map.needsUpdate=true;}
+    }
+  });
+  currentSide=sideName;
+  $("#sideBtn").textContent = sideName;
+}
+function forceInside(frames=12,z=0.06){
+  const rig=$("#rig").object3D, cam=$("#cam");
+  let i=0; (function tick(){
+    rig.position.set(0,0,0); rig.rotation.set(0,0,0);
+    cam.object3D.position.set(0,0,z);
+    cam.setAttribute("camera","active:true; near:0.003; far:1000");
+    if(++i<frames) requestAnimationFrame(tick);
+  })();
+}
+
+/* =========================
+   Offline vape aerosol (screen-wide)
+   ========================= */
+function createSmokeTexture(){
+  const sz=64, c=document.createElement('canvas'); c.width=c.height=sz; const g=c.getContext('2d');
+  const grd=g.createRadialGradient(sz/2,sz/2,0, sz/2,sz/2,sz/2);
+  grd.addColorStop(0,'rgba(255,255,255,1)');
+  grd.addColorStop(0.25,'rgba(255,255,255,0.6)');
+  grd.addColorStop(0.6,'rgba(255,255,255,0.18)');
+  grd.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=grd; g.fillRect(0,0,sz,sz);
+  const tex = new AFRAME.THREE.CanvasTexture(c);
+  tex.minFilter = AFRAME.THREE.LinearFilter;
+  tex.magFilter = AFRAME.THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  return tex;
+}
+const SMOKE_TEX = createSmokeTexture();
+
+AFRAME.registerComponent('vape-aerosol',{
+  schema:{
+    preset:{type:'string',default:'mouth'},    // mouth | bronchi | lung | haze
+    active:{type:'boolean',default:true},
+    density:{type:'number',default:0.7},
+    color1:{type:'string',default:'#ffffff'},
+    color2:{type:'string',default:'#f0ede8'}
+  },
+  init: function(){
+    const T=AFRAME.THREE;
+    this.time=0;
+    this.poolSize=0;
+    this.spawnPerSec=0;
+    this.gravityY=0;
+    this.size=0.022;            // smaller by default
+    this.maxAge=2.0;
+    this.spread=new T.Vector3(0.25,0.12,0.18);
+    this.speed=0.9;
+    this.haze=false;
+
+    // screen-fill spawn disc in front of camera
+    this.originRadius=0.28;     // meters across the view
+    this.originDepth=0.10;      // thickness along camera Z
+
+    this.positions=null; this.velocities=null; this.birth=null; this.life=null; this.activeFlags=null;
+    this.geom=new T.BufferGeometry();
+    this.material=new T.PointsMaterial({
+      size:this.size, map:SMOKE_TEX, transparent:true, opacity:0.8,
+      depthWrite:false, depthTest:true, blending:T.AdditiveBlending,
+      color:0xffffff, sizeAttenuation:true, alphaTest:0.01
+    });
+    this.points=new T.Points(this.geom, this.material);
+    this.el.object3D.add(this.points);
+
+    this.configureFromPreset(this.data.preset, this.data.density);
+    this.resizePool();
+  },
+  update: function(old){
+    if (old.preset!==this.data.preset || old.density!==this.data.density || old.active!==this.data.active){
+      this.configureFromPreset(this.data.preset, this.data.density);
+      this.resizePool();
+    }
+  },
+  remove: function(){
+    this.el.object3D.remove(this.points);
+    this.geom.dispose();
+    this.material.dispose();
+  },
+  configureFromPreset: function(preset, density){
+    density = Math.max(0, Math.min(1, density||0.7));
+
+    if (preset==='mouth'){
+      this.haze=false;
+      this.poolTarget = Math.floor(1400 * density) + 200;
+      this.spawnPerSec = 950 * density + 150;
+      this.gravityY = -0.28;
+      this.size = 0.020;
+      this.maxAge = 1.6;
+      this.speed = 0.8;
+      this.spread.set(0.25,0.14,0.18);
+      this.originRadius = 0.33;      // broader across screen
+      this.originDepth  = 0.12;
+      this.material.color.set(this.data.color1);
+      this.material.opacity = 0.70;
+    } else if (preset==='bronchi'){
+      this.haze=false;
+      this.poolTarget = Math.floor(1600 * density) + 200;
+      this.spawnPerSec = 1100 * density + 180;
+      this.gravityY = -0.05;
+      this.size = 0.018;
+      this.maxAge = 2.4;
+      this.speed = 1.1;
+      this.spread.set(0.20,0.10,0.16);
+      this.originRadius = 0.28;
+      this.originDepth  = 0.10;
+      this.material.color.set(this.data.color2);
+      this.material.opacity = 0.62;
+    } else if (preset==='lung'){
+      this.haze=false;
+      this.poolTarget = Math.floor(1300 * density) + 160;
+      this.spawnPerSec = 800 * density + 120;
+      this.gravityY = -0.02;
+      this.size = 0.016;
+      this.maxAge = 2.8;
+      this.speed = 0.55;
+      this.spread.set(0.18,0.12,0.18);
+      this.originRadius = 0.30;
+      this.originDepth  = 0.14;
+      this.material.color.set(this.data.color1);
+      this.material.opacity = 0.42;
+    } else if (preset==='haze'){
+      this.haze=true;
+      this.poolTarget = Math.floor(1800 * density) + 200;
+      this.spawnPerSec = 0;
+      this.gravityY = 0.0;
+      this.size = 0.016;
+      this.maxAge = 4.5;
+      this.speed = 0.0;
+      this.spread.set(2.5,2.0,2.5);
+      this.material.color.set(this.data.color1);
+      this.material.opacity = 0.10;
+    }
+    this.material.size = this.size;
+    this.material.needsUpdate = true;
+  },
+  resizePool: function(){
+    const T=AFRAME.THREE;
+    const N=this.poolTarget||0;
+    if (N===this.poolSize) return;
+    this.poolSize=N;
+
+    this.positions=new Float32Array(N*3);
+    this.velocities=new Float32Array(N*3);
+    this.birth=new Float32Array(N);
+    this.life=new Float32Array(N);
+    this.activeFlags=new Uint8Array(N);
+
+    for(let i=0;i<N;i++) this._deactivate(i,true);
+    this.geom.setAttribute('position', new T.BufferAttribute(this.positions,3));
+    this.geom.attributes.position.needsUpdate=true;
+  },
+  _deactivate: function(i, randomize=false){
+    this.positions[i*3+0]=9999;
+    this.positions[i*3+1]=9999;
+    this.positions[i*3+2]=9999;
+    this.velocities[i*3+0]=0; this.velocities[i*3+1]=0; this.velocities[i*3+2]=0;
+    this.birth[i]=0; this.life[i]=0; this.activeFlags[i]=0;
+    if (randomize && this.haze){
+      const sx=this.spread.x, sy=this.spread.y, sz=this.spread.z;
+      this.positions[i*3+0]=(Math.random()*2-1)*sx;
+      this.positions[i*3+1]=(Math.random()*2-1)*sy;
+      this.positions[i*3+2]=(Math.random()*2-1)*sz;
+      this.birth[i]=Math.random()*2;
+      this.life[i]=this.maxAge*(0.6+0.8*Math.random());
+      this.activeFlags[i]=1;
+    }
+  },
+  _spawnDisc: function(){
+    // random point on a disc of radius R, thickness in Z
+    const r = this.originRadius * Math.sqrt(Math.random());
+    const theta = Math.random()*Math.PI*2;
+    const x = r*Math.cos(theta);
+    const y = r*Math.sin(theta);
+    const z = (Math.random()*2-1)*this.originDepth; // around the camera plane
+    return [x,y,z];
+  },
+  _spawnOne: function(now){
+    for(let i=0;i<this.poolSize;i++){
+      if (this.activeFlags[i]===0){
+        const [x,y,z] = this._spawnDisc();
+        const j=i*3;
+        this.positions[j+0]=x;
+        this.positions[j+1]=y;
+        this.positions[j+2]=z;
+        // velocity: mostly toward -Z (into view) with some swirl
+        const ang=Math.random()*Math.PI*2;
+        const radial=0.25;
+        this.velocities[j+0]= radial*Math.cos(ang)*(0.4+0.8*Math.random());
+        this.velocities[j+1]= radial*Math.sin(ang)*(0.4+0.8*Math.random()) + (Math.random()*2-1)*0.08;
+        this.velocities[j+2]= -this.speed + (Math.random()*2-1)*0.10;
+        this.birth[i]=now;
+        this.life[i]=this.maxAge*(0.85+0.35*Math.random());
+        this.activeFlags[i]=1;
+        return;
+      }
+    }
+  },
+  tick: function(t,dt){
+    this.time=t*0.001;
+    const dtSec = Math.min(0.05, (dt||16)/1000);
+    const pos=this.positions, vel=this.velocities, birth=this.birth, life=this.life, act=this.activeFlags;
+    const N=this.poolSize;
+
+    // keep emitter following camera orientation so disc faces the screen
+    const aeroRig = this.el.object3D;
+    const cam = document.querySelector('#cam').object3D;
+    aeroRig.position.copy(cam.position);
+    aeroRig.quaternion.copy(cam.quaternion);
+
+    if (this.data.active && !this.haze && this.spawnPerSec>0){
+      const want = this.spawnPerSec * dtSec;
+      let spawnCount = Math.floor(want);
+      if (Math.random() < (want-spawnCount)) spawnCount++;
+      for(let s=0;s<spawnCount;s++) this._spawnOne(this.time);
+    }
+
+    const gy=this.gravityY;
+    for(let i=0;i<N;i++){
+      if (!act[i]) continue;
+      const age = this.time - birth[i];
+      if (age > life[i]){ this._deactivate(i, this.haze); continue; }
+      const j=i*3;
+      vel[j+1] += gy*dtSec;
+      pos[j+0] += vel[j+0]*dtSec;
+      pos[j+1] += vel[j+1]*dtSec;
+      pos[j+2] += vel[j+2]*dtSec;
+    }
+    if (this.geom.attributes.position) this.geom.attributes.position.needsUpdate=true;
+  }
+});
+
+/* Helpers for density slider → 0..1 */
+function densityFactor(){ const v=parseInt($("#density").value||"70",10); return Math.max(0,Math.min(1,v/100)); }
+
+/* Configure/attach aerosol for current scene */
+function setAerosolPreset(kind){
+  const aeroEl = $("#aerosol");
+  const hazeEl = $("#haze");

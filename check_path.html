@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head><title>Path Checker</title></head>
+<body>
+<script>
+const pathsToCheck = [
+    'Part1.html',
+    'journeys/mouth_final.html', 
+    'journeys/bronchi_final.html',
+    'journeys/lungs_final.html',
+    'assets/reward_scene.html',
+    'assets/00_intro_1080p24.mp4',
+    'assets/01_parking_offer_1080p24.mp4',
+    'assets/reward_cheer.mp3'
+];
+
+async function checkPath(path) {
+    try {
+        const response = await fetch(path);
+        return response.ok ? '✅' : '❌';
+    } catch {
+        return '❌';
+    }
+}
+
+async function checkAll() {
+    console.log('🔍 Checking file paths...\n');
+    for (const path of pathsToCheck) {
+        const status = await checkPath(path);
+        console.log(`${status} ${path}`);
+    }
+    console.log('\n✅ = Found | ❌ = Missing');
+}
+
+checkAll();
+</script>
+</body>
+</html>
