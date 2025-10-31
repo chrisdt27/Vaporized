@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Vaporized — Brain Scene (Click First, Then Place Dot)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <style>
+    html, body { margin:0; height:100%; background:#fff; font-family:system-ui,Segoe UI,Arial }
+    .whiteboard{
+      position:fixed; left:12px; top:18px; width:420px; max-width:40vw; z-index:1200;
+      background:#f8fbff; border:2px solid #dbe7ff; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.10);
+      padding:14px 16px;
+    }
+    .whiteboard h2{ margin:0 0 10px 0; font-size:20px; color:#0f172a }
+    .answers{ display:grid; gap:6px }
+    .ans{ background:#ffffff; border:1px solid #d7e3ff; border-radius:10px; padding:10px 12px; color:#0b1a33; cursor:pointer; }
+    .ans strong{ margin-right:6px }
+    .ans.active{ border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.25) inset; background:#f0f7ff }
+    .ans.recording{ border-color:#ef4444; box-shadow:0 0 0 2px rgba(239,68,68,.25) inset; background:#fef2f2 }
+    .ans.done{ opacity:.85 }
+    .callout-box{
+      position:fixed; right:12px; top:18px; z-index:1100; width:360px; max-width:32vw;
+      background:#111; color:#fff; border-radius:12px; border:1px solid #333; padding:14px 16px; display:none;
+      box-shadow:0 8px 28px rgba(0,0,0,.25); text-align:left;
+    }
+    .callout-box h3{ margin:0 0 6px 0; font-size:18px }
+    .callout-box p{ margin:0; line-height:1.35; color:#cfd8e3 }
+    #leaderOverlay{ position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:1099; pointer-events:none; display:none; }
+    .cta{position:fixed; left:50%; transform:translateX(-50%); bottom:28px; z-index:1200; display:none;}
+    .cta button{background:#0f1220;color:#cfe8ff;border:1px solid #243159;border-radius:12px;padding:12px 18px;font-size:18px;cursor:pointer}
+    .cta button:hover{background:#182242}
+    #statusDot{ position:fixed; right:12px; bottom:12px; z-index:1200; width:10px; height:10px; border-radius:50%; background:#2aa54a; border:1px solid #511; }
+    
+    /* Recording UI */
+    .recording-ui{
+      position:fixed; right:12px; bottom:40px; z-index:1300; background:rgba(255,255,255,0.95);
+      border:2px solid #3b82f6; border-radius:10px; padding:12px; display:none;
+    }
+    .recording-ui h4{ margin:0 0 8px 0; color:#0f172a }
+    .recording-ui button{ margin:2px; padding:6px 10px; border:1px solid #ccc; border-radius:6px; background:#f8f9fa; cursor:pointer }
+    .recording-ui button:hover{ background:#e9ecef }
+    
+    /* Instructions */
+    .instructions{
+      position:fixed; left:50%; transform:translateX(-50%); top:20px; z-index:1200; 
+      background:#fffbeb; border:2px solid #f59e0b; border-radius:10px; padding:10px 14px; display:none;
+    }
+
+    /* Controls Help */
+    .controls-help{
+      position:fixed; left:12px; bottom:12px; z-index:1200; 
+      background:rgba(255,255,255,0.9); border:1px solid #d7dee7; border-radius:8px; padding:8px 10px;
+      font-size:12px; color:#334155;
+    }
+    
+    /* Fade transition */
+    .fade-out{ animation:fade 0.9s forwards }
+    @keyframes fade { to { opacity:0; transform:scale(.96) } }
+  </style>
+</head>
+<body>
+
+<div class="whiteboard" id="wb">
+  <h2 id="wbQ">How does vaping affect the adolescent brain?</h2>
+  <div class="answers">
+    <div class="ans" id="wbA"><strong>A.</strong> Poor concentration</div>
+    <div class="ans" id="wbB"><strong>B.</strong> Impaired learning & memory</div>
+    <div class="ans" id="wbC"><strong>C.</strong> Increased risk of addiction</div>
+    <div class="ans" id="wbD"><strong>D.</strong> Mood swings & anxiety</div>
+  </div>
+</div>
+
+<div id="callout" class="callout-box">
+  <h3 id="callTitle">Title</h3>
+  <p id="callBody">Body text</p>
+</div>
+
+<svg id="leaderOverlay">
+  <line id="leader" x1="0" y1="0" x2="0" y2="0" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <circle id="leaderDot" cx="0" cy="0" r="5" fill="#d91525" stroke="#600" stroke-width="1.5" />
+</svg>
+
+<div id="statusDot"></div>
+
+<!-- Controls Help -->
+<div class="controls-help">
+  <strong>Controls:</strong> Arrow Keys = Rotate • Mouse Wheel = Zoom
+</div>
+
+<!-- Instructions -->
+<div class="instructions" id="instructions">
+  <strong>Recording Mode:</strong> Click on the brain to place the red dot, then click "Save Position"
+</div>
+
+<!-- Recording Controls -->
+<div class="recording-ui" id="recordingUI">
+  <h4>📹 Recording: <span id="currentAnswer">A</span></h4>
+  <button id="saveBtn">Save Position</button>
+  <button id="cancelBtn">Cancel</button>
+  <button id="exportBtn">Export All Data</button>
+  <button id="clearBtn">Clear All</button>
+</div>
+
+<div class="cta" id="ctaBox"><button id="ctaBtn">Continue to Next Scene</button></div>
+
+<a-scene renderer="antialias:true; physicallyCorrectLights:true; colorManagement:true; toneMapping:ACESFilmic;"
+         background="color:#fff" shadow="type: pcfsoft" vr-mode-ui="enabled:true">
+  <a-sky color="#fff"></a-sky>
+
+  <a-entity id="rig" position="0 1.6 0">
+    <a-entity id="cam" camera></a-entity>
+  </a-entity>
+
+  <a-entity light="type: ambient; intensity: 0.5; color:#ffffff"></a-entity>
+  <a-entity light="type: directional; intensity: 1.2; color:#ffffff" position="2 3 2" shadow="cast:true"></a-entity>
+  <a-entity light="type: directional; intensity: 0.9; color:#ffffff" position="-2 2 -2"></a-entity>
+  <a-entity light="type: directional; intensity: 0.8; color:#ffffff" position="-3 3 3"></a-entity>
+
+  <a-assets timeout="20000">
+    <!-- UPDATED PATH for Vaporized folder -->
+    <a-asset-item id="brainModel" src="assets/models/Brain.glb"></a-asset-item>
+  </a-assets>
+
+  <a-circle id="shadow" position="0 0.2 -2" rotation="-90 0 0" radius="0.6" color="#000" opacity="0.10"></a-circle>
+
+  <!-- Visual indicator for placed dot -->
+  <a-sphere id="placementDot" radius="0.02" color="#ff0000" visible="false" position="0 0 0"></a-sphere>
+
+  <a-entity id="brain" gltf-model="#brainModel" position="0 1 -2" rotation="0 0 0" scale="1 1 1" shadow="cast:true"></a-entity>
+  <a-entity id="mouse" cursor="rayOrigin: mouse" raycaster="objects: #brain"></a-entity>
+</a-scene>
+
+<script>
+// === DOM Elements ===
+const call  = document.getElementById('callout');
+const title = document.getElementById('callTitle');
+const body  = document.getElementById('callBody');
+const svg   = document.getElementById('leaderOverlay');
+const line  = document.getElementById('leader');
+const dot2D = document.getElementById('leaderDot');
+const scene = document.querySelector('a-scene');
+const brain = document.getElementById('brain');
+const ctaBox = document.getElementById('ctaBox');
+const ctaBtn = document.getElementById('ctaBtn');
+const wbA=document.getElementById('wbA'), wbB=document.getElementById('wbB'), wbC=document.getElementById('wbC'), wbD=document.getElementById('wbD');
+const recordingUI = document.getElementById('recordingUI');
+const placementDot = document.getElementById('placementDot');
+const instructions = document.getElementById('instructions');
+const currentAnswerSpan = document.getElementById('currentAnswer');
+const saveBtn = document.getElementById('saveBtn');
+const cancelBtn = document.getElementById('cancelBtn');
+
+// === Brain Movement Controls ===
+let yaw=0, pitch=0, zoomZ=-2;
+const Z_MIN=-3.0, Z_MAX=-0.8;
+
+function applyBrainTransform(){
+  brain.object3D.rotation.set(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(yaw), 0);
+  brain.object3D.position.set(0,1,zoomZ);
+}
+
+// Keyboard controls for rotation
+window.addEventListener('keydown',(e)=>{
+  if(e.key==='ArrowLeft'){ 
+    yaw -= 3; 
+    applyBrainTransform(); 
+  }
+  if(e.key==='ArrowRight'){ 
+    yaw += 3; 
+    applyBrainTransform(); 
+  }
+  if(e.key==='ArrowUp'){ 
+    pitch -= 3; 
+    applyBrainTransform(); 
+  }
+  if(e.key==='ArrowDown'){ 
+    pitch += 3; 
+    applyBrainTransform(); 
+  }
+});
+
+// Mouse wheel for zoom
+window.addEventListener('wheel',(e)=>{
+  const dz = e.deltaY>0 ? -0.15 : 0.15;
+  zoomZ = Math.max(Z_MIN, Math.min(Z_MAX, zoomZ+dz));
+  applyBrainTransform();
+},{passive:true});
+
+// === Recording Mode ===
+const DEV = /[?&]dev=1/.test(location.search);
+if (DEV) {
+  recordingUI.style.display = 'block';
+}
+
+let currentRecordingAnswer = null;
+let currentDotPosition = null;
+let animRAF = null;
+
+// Answer titles and bodies
+const answerData = {
+  A: {
+    title: 'Prefrontal Cortex — Attention & Control',
+    body: 'Nicotine disrupts executive control, degrading sustained attention and focus.',
+    narration: "assets/audio/vo/vo_A.mp3"
+  },
+  B: {
+    title: 'Hippocampus — Learning & Memory',
+    body: 'Repeated nicotine exposure impairs hippocampal plasticity, affecting learning and memory formation.',
+    narration: "assets/audio/vo/vo_B.mp3"
+  },
+  C: {
+    title: 'Nucleus Accumbens — Reward & Addiction',
+    body: 'Nicotine drives dopamine surges in reward pathways, increasing addiction vulnerability.',
+    narration: "assets/audio/vo/vo_C.mp3"
+  },
+  D: {
+    title: 'Amygdala — Mood & Anxiety',
+    body: 'Withdrawal and nicotine effects on amygdala contribute to mood instability and anxiety.',
+    narration: "assets/audio/vo/vo_D.mp3"
+  }
+};
+
+// Click on answer buttons to start recording
+function startRecording(answer) {
+  if (!DEV) return;
+  
+  currentRecordingAnswer = answer;
+  currentAnswerSpan.textContent = answer;
+  
+  // Show instructions and update UI
+  instructions.style.display = 'block';
+  instructions.innerHTML = `<strong>Recording ${answer}:</strong> Use Arrow Keys to rotate, Mouse Wheel to zoom. Click on the brain to place the red dot, then click "Save Position"`;
+  
+  // Highlight the active answer
+  [wbA, wbB, wbC, wbD].forEach(el => el.classList.remove('active', 'recording'));
+  document.getElementById(`wb${answer}`).classList.add('recording');
+  
+  // Show callout box with the answer text
+  title.textContent = answerData[answer].title;
+  body.textContent = answerData[answer].body;
+  call.style.display = 'block';
+  
+  // Hide the dot until user clicks
+  placementDot.setAttribute('visible', 'false');
+  currentDotPosition = null;
+  
+  console.log(`Recording mode started for answer ${answer}`);
+}
+
+// Click on brain to place dot
+brain.addEventListener('click', (ev) => {
+  if (!DEV || !currentRecordingAnswer) return;
+  
+  if (ev.detail && ev.detail.intersection) {
+    const intersectionPoint = ev.detail.intersection.point.clone();
+    
+    // Show visual indicator
+    placementDot.object3D.position.copy(intersectionPoint);
+    placementDot.setAttribute('visible', 'true');
+    
+    // Store the position in brain's local space
+    const localPosition = brain.object3D.worldToLocal(intersectionPoint.clone());
+    currentDotPosition = [localPosition.x, localPosition.y, localPosition.z];
+    
+    // Show leader line
+    showLeaderLine(intersectionPoint);
+    
+    console.log('Dot placed at:', currentDotPosition);
+  }
+});
+
+// Show leader line from callout to dot
+function showLeaderLine(worldPosition) {
+  function drawLeader() {
+    const p = projectToScreen(worldPosition);
+    const a = panelAnchor2D();
+    line.setAttribute('x1', a.x); 
+    line.setAttribute('y1', a.y);
+    line.setAttribute('x2', p.x); 
+    line.setAttribute('y2', p.y);
+    dot2D.setAttribute('cx', p.x); 
+    dot2D.setAttribute('cy', p.y);
+    animRAF = requestAnimationFrame(drawLeader);
+  }
+  
+  if (animRAF) cancelAnimationFrame(animRAF);
+  svg.style.display = 'block';
+  animRAF = requestAnimationFrame(drawLeader);
+}
+
+// Save the current position
+function saveCurrentPosition() {
+  if (!currentRecordingAnswer || !currentDotPosition) {
+    alert('Please click on the brain to place a red dot first!');
+    return;
+  }
+  
+  const pos = brain.object3D.position.clone();
+  const rot = brain.object3D.rotation.clone();
+  
+  scenes[currentRecordingAnswer] = {
+    yaw: yaw, // Use current yaw
+    pitch: pitch, // Use current pitch
+    zoomZ: zoomZ, // Use current zoom
+    dot: currentDotPosition,
+    title: answerData[currentRecordingAnswer].title,
+    body: answerData[currentRecordingAnswer].body,
+    narration: answerData[currentRecordingAnswer].narration
+  };
+  
+  saveScenes(scenes);
+  
+  // Update UI
+  document.getElementById(`wb${currentRecordingAnswer}`).classList.remove('recording');
+  document.getElementById(`wb${currentRecordingAnswer}`).classList.add('done');
+  
+  // Hide recording UI
+  instructions.style.display = 'none';
+  call.style.display = 'none';
+  svg.style.display = 'none';
+  placementDot.setAttribute('visible', 'false');
+  
+  if (animRAF) {
+    cancelAnimationFrame(animRAF);
+    animRAF = null;
+  }
+  
+  alert(`Position saved for answer ${currentRecordingAnswer}!`);
+  currentRecordingAnswer = null;
+  currentDotPosition = null;
+}
+
+// Cancel recording
+function cancelRecording() {
+  instructions.style.display = 'none';
+  call.style.display = 'none';
+  svg.style.display = 'none';
+  placementDot.setAttribute('visible', 'false');
+  
+  if (animRAF) {
+    cancelAnimationFrame(animRAF);
+    animRAF = null;
+  }
+  
+  [wbA, wbB, wbC, wbD].forEach(el => el.classList.remove('recording'));
+  currentRecordingAnswer = null;
+  currentDotPosition = null;
+}
+
+// Wire up answer buttons
+wbA.addEventListener('click', () => startRecording('A'));
+wbB.addEventListener('click', () => startRecording('B'));
+wbC.addEventListener('click', () => startRecording('C'));
+wbD.addEventListener('click', () => startRecording('D'));
+
+// Wire up recording buttons
+saveBtn.addEventListener('click', saveCurrentPosition);
+cancelBtn.addEventListener('click', cancelRecording);
+
+// Export and clear functions
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const data = JSON.stringify(scenes, null, 2);
+  navigator.clipboard.writeText(data);
+  alert('Scene data copied to clipboard!');
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (confirm('Clear all saved positions?')) {
+    scenes = {A: null, B: null, C: null, D: null};
+    clearScenes();
+    placementDot.setAttribute('visible', 'false');
+    currentDotPosition = null;
+    [wbA, wbB, wbC, wbD].forEach(el => el.classList.remove('active', 'recording', 'done'));
+    alert('All positions cleared.');
+  }
+});
+
+// === Auto-Play Functions ===
+let driftRAF = null;
+let zoomAnimRAF = null;
+let activeId = null;
+
+function startMicroDrift(){
+  const startYaw = yaw, startPitch = pitch;
+  const t0 = performance.now();
+  function loop(){
+    const t = (performance.now()-t0)/1000;
+    yaw = startYaw + Math.sin(t*1.6)*0.2 + t*0.1;
+    pitch = startPitch + Math.sin(t*1.2)*0.15;
+    applyBrainTransform();
+    driftRAF = requestAnimationFrame(loop);
+  }
+  stopMicroDrift();
+  driftRAF = requestAnimationFrame(loop);
+}
+
+function stopMicroDrift(){
+  if(driftRAF){ cancelAnimationFrame(driftRAF); driftRAF=null; }
+}
+
+function easeZoom(toZ, dur=1200){
+  if(zoomAnimRAF){ cancelAnimationFrame(zoomAnimRAF); zoomAnimRAF=null; }
+  const fromZ = zoomZ;
+  const dz = toZ - fromZ;
+  const t0 = performance.now();
+  return new Promise((resolve)=>{
+    function step(){
+      const t = performance.now() - t0;
+      const k = Math.min(1, t/dur);
+      const e = k*k*(3-2*k);
+      zoomZ = fromZ + dz*e;
+      applyBrainTransform();
+      if(k<1){ zoomAnimRAF=requestAnimationFrame(step); } else { zoomAnimRAF=null; resolve(); }
+    }
+    zoomAnimRAF=requestAnimationFrame(step);
+  });
+}
+
+function startLeaderWorld(worldVec){
+  function tick(){ 
+    drawLeaderToWorld(worldVec); 
+    animRAF = requestAnimationFrame(tick); 
+  }
+  if(animRAF) cancelAnimationFrame(animRAF);
+  animRAF = requestAnimationFrame(tick);
+}
+
+function drawLeaderToWorld(worldVec){
+  const p = projectToScreen(worldVec);
+  const a = panelAnchor2D();
+  line.setAttribute('x1', a.x); 
+  line.setAttribute('y1', a.y);
+  line.setAttribute('x2', p.x); 
+  line.setAttribute('y2', p.y);
+  dot2D.setAttribute('cx', p.x); 
+  dot2D.setAttribute('cy', p.y);
+}
+
+function playScene(id){
+  return new Promise((resolve)=>{
+    if(!scenes[id]){ 
+      console.warn('No recorded scene for',id); 
+      return resolve(0); 
+    }
+    
+    const S = scenes[id];
+    yaw = S.yaw; 
+    pitch = S.pitch; 
+    zoomZ = S.zoomZ; 
+    applyBrainTransform();
+    
+    activeId = id; 
+    title.textContent = S.title; 
+    body.textContent = S.body;
+    call.style.display = 'block'; 
+    svg.style.display = 'block';
+    setActiveWB(id);
+    
+    // Convert local dot position to world position for leader line
+    const worldPos = brain.object3D.localToWorld(new THREE.Vector3(...S.dot));
+    startLeaderWorld(worldPos);
+    
+    const zoomIn = Math.min(S.zoomZ + 0.25, Z_MAX);
+    const audio = new Audio(S.narration || `assets/audio/vo/vo_${id}.mp3`);
+    
+    audio.onended = async () => {
+      await easeZoom(S.zoomZ, 800);
+      stopMicroDrift();
+      resolve(audio.duration || 0);
+    };
+    
+    audio.onerror = async () => {
+      await easeZoom(S.zoomZ, 600);
+      stopMicroDrift();
+      resolve(0);
+    };
+    
+    startMicroDrift();
+    easeZoom(zoomIn, 1000).then(()=>{});
+    
+    audio.play().catch(() => {
+      setTimeout(async () => {
+        await easeZoom(S.zoomZ, 600);
+        stopMicroDrift();
+        resolve(0);
+      }, 1200);
+    });
+  });
+}
+
+async function autoRunSequence(){
+  const order = ['A','B','C','D'];
+  for (let i = 0; i < order.length; i++){
+    await playScene(order[i]);
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  ctaBox.style.display = 'block';
+}
+
+// === Rest of your existing code ===
+function setActiveWB(id){
+  [wbA,wbB,wbC,wbD].forEach(el=>el.classList.remove('active','done'));
+  if(id==='A') wbA.classList.add('active');
+  if(id==='B'){ wbA.classList.add('done'); wbB.classList.add('active'); }
+  if(id==='C'){ wbA.classList.add('done'); wbB.classList.add('done'); wbC.classList.add('active'); }
+  if(id==='D'){ wbA.classList.add('done'); wbB.classList.add('done'); wbC.classList.add('done'); wbD.classList.add('active'); }
+}
+
+// Material colorizer
+AFRAME.registerComponent('ready-light',{
+  init(){ this.el.addEventListener('model-loaded',()=>{
+    this.el.object3D.traverse(n=>{ if(n.isMesh){
+      n.material?.color?.set?.('#ffb6c1');
+      if('metalness' in n.material) n.material.metalness=0.1;
+      if('roughness' in n.material) n.material.roughness=0.45;
+    }});
+  });}
+});
+brain.setAttribute('ready-light','');
+
+let scenes = {A:null, B:null, C:null, D:null};
+const STORAGE_KEY = 'vape_brain_scenes';
+
+function loadScenes(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) return false;
+  try{ scenes = JSON.parse(raw) || scenes; return true; }catch(_){ return false; }
+}
+
+function saveScenes(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+function clearScenes(){ localStorage.removeItem(STORAGE_KEY); }
+
+function projectToScreen(v3){
+  const cam = scene.camera; 
+  const v = v3.clone().project(cam);
+  return { 
+    x: (v.x * 0.5 + 0.5) * window.innerWidth, 
+    y: (-v.y * 0.5 + 0.5) * window.innerHeight 
+  };
+}
+
+function panelAnchor2D(){
+  const r = call.getBoundingClientRect();
+  return { x: r.left + 12, y: r.top + r.height * 0.35 };
+}
+
+// Initialize brain position
+applyBrainTransform();
+
+// CTA handler - will update when next scene is ready
+ctaBtn.addEventListener('click', () => {
+  document.body.classList.add('fade-out');
+  setTimeout(() => { 
+    alert("Next scene will be connected here once developed");
+    // window.location.href = "NEXT_SCENE_FILE.html"; 
+  }, 900);
+});
+
+// Load existing scenes and auto-play if not in dev mode
+if(loadScenes()){
+  Object.keys(scenes).forEach(key => {
+    if (scenes[key]) {
+      document.getElementById(`wb${key}`).classList.add('done');
+    }
+  });
+  
+  // Auto-play if not in dev mode and all scenes are recorded
+  if (!DEV && Object.values(scenes).every(scene => scene !== null)) {
+    setTimeout(() => {
+      autoRunSequence();
+    }, 1000);
+  }
+}
+</script>
+
+</body>
+</html>
