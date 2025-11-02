@@ -26,7 +26,7 @@
       font-family: Arial, sans-serif;
       max-width: 320px;
       display: none;
-      z-index: 1000;
+      z-index: 10000;
       box-shadow: 0 0 25px rgba(255, 68, 68, 0.6);
       backdrop-filter: blur(5px);
     }
@@ -118,8 +118,8 @@
     <!-- Bronchi model (.glb) — corrected relative path -->
     <a-entity id="bronchi" gltf-model="../assets/models/bronchi.glb" visible="true"></a-entity>
 
-    <!-- Hotspots with professional "i" icons -->
-    <a-entity id="hs-cilia" position="0.5 1.0 -0.3" class="clickable" data-popup="popup1">
+    <!-- CORRECTED Hotspot positions - INSIDE the bronchi where camera starts -->
+    <a-entity id="hs-cilia" position="0 0.3 -0.8" class="clickable" data-popup="popup1">
       <!-- Red circle with "i" -->
       <a-circle radius="0.03" color="#d40000" material="shader: flat; opacity: 0.9"
                 animation="property: scale; to: 1.15 1.15 1; dur: 1200; dir: alternate; loop: true; easing: easeInOutSine">
@@ -129,7 +129,7 @@
       <a-sphere radius="0.08" material="color: #fff; opacity: 0; transparent: true"></a-sphere>
     </a-entity>
     
-    <a-entity id="hs-inflammation" position="-0.5 0.5 -0.5" class="clickable" data-popup="popup2">
+    <a-entity id="hs-inflammation" position="-0.4 0.2 -1.2" class="clickable" data-popup="popup2">
       <!-- Red circle with "i" -->
       <a-circle radius="0.03" color="#d40000" material="shader: flat; opacity: 0.9"
                 animation="property: scale; to: 1.15 1.15 1; dur: 1200; dir: alternate; loop: true; easing: easeInOutSine">
@@ -139,7 +139,7 @@
       <a-sphere radius="0.08" material="color: #fff; opacity: 0; transparent: true"></a-sphere>
     </a-entity>
 
-    <a-entity id="hs-infection" position="0.0 0.8 -0.7" class="clickable" data-popup="popup3">
+    <a-entity id="hs-infection" position="0.3 -0.1 -1.5" class="clickable" data-popup="popup3">
       <!-- Red circle with "i" -->
       <a-circle radius="0.03" color="#d40000" material="shader: flat; opacity: 0.9"
                 animation="property: scale; to: 1.15 1.15 1; dur: 1200; dir: alternate; loop: true; easing: easeInOutSine">
@@ -313,9 +313,13 @@
           }
         });
 
-        // Force show that interactions are working
+        // Test popup system after scene loads
         setTimeout(() => {
-          console.log('Interaction system ready - click the "i" icons!');
+          console.log('Interaction system ready - look for red pulsing "i" icons INSIDE the bronchi!');
+          console.log('Hotspot positions:');
+          console.log('- hs-cilia: 0 0.3 -0.8 (straight ahead)');
+          console.log('- hs-inflammation: -0.4 0.2 -1.2 (left side)');
+          console.log('- hs-infection: 0.3 -0.1 -1.5 (right side, further down)');
         }, 2000);
       });
     });
