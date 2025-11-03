@@ -345,16 +345,9 @@
     }
   }
   
-  // Key handling for placement mode
+  // Key handling for placement mode - FIXED VERSION
   window.addEventListener('keydown', (e) => {
-    // Prevent default for movement keys to avoid page scrolling
-    if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'Space'].includes(e.code)) {
-      e.preventDefault();
-    }
-    
-    activeKeys.add(e.code);
-    
-    // Toggle placement mode with M
+    // Toggle placement mode with M (always available)
     if (e.key === 'm' || e.key === 'M') {
       if (placementMode) {
         disablePlacementMode();
@@ -362,9 +355,17 @@
         enablePlacementMode();
       }
       e.preventDefault();
+      return;
     }
     
     if (!placementMode) return;
+    
+    // Prevent default for movement keys to avoid page scrolling
+    if (['w', 'a', 's', 'd', 'q', 'e', ' ', '1', '2', '3'].includes(e.key.toLowerCase())) {
+      e.preventDefault();
+    }
+    
+    activeKeys.add(e.key.toLowerCase());
     
     // Hotspot selection with number keys
     if (e.key >= '1' && e.key <= '3') {
@@ -376,28 +377,28 @@
     }
     
     // Save position with Space
-    if (e.code === 'Space') {
+    if (e.key === ' ') {
       saveHotspotPosition();
       e.preventDefault();
     }
   });
   
   window.addEventListener('keyup', (e) => {
-    activeKeys.delete(e.code);
+    activeKeys.delete(e.key.toLowerCase());
   });
   
-  // Movement in placement mode - using A-Frame tick system
+  // Movement in placement mode - using A-Frame tick system - FIXED VERSION
   AFRAME.registerComponent('placement-movement', {
     tick: function() {
       if (!placementMode || !selectedHotspot) return;
       
-      // Check all movement keys
-      if (activeKeys.has('KeyW')) moveSelectedHotspot('forward');
-      if (activeKeys.has('KeyS')) moveSelectedHotspot('backward');
-      if (activeKeys.has('KeyA')) moveSelectedHotspot('left');
-      if (activeKeys.has('KeyD')) moveSelectedHotspot('right');
-      if (activeKeys.has('KeyQ')) moveSelectedHotspot('up');
-      if (activeKeys.has('KeyE')) moveSelectedHotspot('down');
+      // Check all movement keys using the activeKeys Set
+      if (activeKeys.has('w')) moveSelectedHotspot('forward');
+      if (activeKeys.has('s')) moveSelectedHotspot('backward');
+      if (activeKeys.has('a')) moveSelectedHotspot('left');
+      if (activeKeys.has('d')) moveSelectedHotspot('right');
+      if (activeKeys.has('q')) moveSelectedHotspot('up');
+      if (activeKeys.has('e')) moveSelectedHotspot('down');
     }
   });
   

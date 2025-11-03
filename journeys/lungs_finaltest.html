@@ -51,16 +51,16 @@
     <!-- Lung model - corrected relative path -->
     <a-entity id="lung" gltf-model="../assets/models/Lung.glb"></a-entity>
 
-    <!-- Aerosol: fixed to spawn in front of camera -->
+    <!-- Aerosol: OPTIMIZED for performance -->
     <a-entity id="aeroEmitter"
       droplet-advect="enabled:true;
-                      rate:520; max:1200; life:4600;
+                      rate:180; max:400; life:3200;
                       sizeStart:0.005; sizeEnd:0.014;
                       baseSpeed:0.42; accel:0.48; accelDown:0.12;
-                      swirl:0.13; swirlHz:1.4; lateral:0.09; drag:0.34;
+                      swirl:0.08; swirlHz:1.2; lateral:0.06; drag:0.34;
                       sheetDist:0.10; sheetWidth:0.26; sheetHeight:0.22; sheetDepth:0.14;
                       throatDist:1.10;
-                      stickBase:0.52; stickSpeedK:0.28; stickFadeSec:18.0; maxDeposits:1000">
+                      stickBase:0.52; stickSpeedK:0.28; stickFadeSec:18.0; maxDeposits:400">
     </a-entity>
 
     <a-entity id="hotspots" visible="true">
@@ -152,44 +152,93 @@
       }
     });
 
-    /* ---------- Droplet advection (spawn in front) ---------- */
+    /* ---------- Droplet advection (OPTIMIZED for performance) ---------- */
     AFRAME.registerComponent('droplet-advect',{
       schema:{
-        enabled:{default:true}, rate:{default:520}, max:{default:1200}, life:{default:4600},
+        enabled:{default:true}, rate:{default:180}, max:{default:400}, life:{default:3200},
         sizeStart:{default:0.005}, sizeEnd:{default:0.014},
         baseSpeed:{default:0.42}, accel:{default:0.48}, accelDown:{default:0.12},
-        swirl:{default:0.13}, swirlHz:{default:1.4}, lateral:{default:0.09}, drag:{default:0.34},
+        swirl:{default:0.08}, swirlHz:{default:1.2}, lateral:{default:0.06}, drag:{default:0.34},
         sheetDist:{default:0.10}, sheetWidth:{default:0.26}, sheetHeight:{default:0.22}, sheetDepth:{default:0.14},
         throatDist:{default:1.10},
-        stickBase:{default:0.52}, stickSpeedK:{default:0.28}, stickFadeSec:{default:18.0}, maxDeposits:{default:1000}
+        stickBase:{default:0.52}, stickSpeedK:{default:0.28}, stickFadeSec:{default:18.0}, maxDeposits:{default:400}
       },
       init:function(){
         this.pool=[]; this.acc=0; this.deposits=[]; this.mesh=null;
-        this.ray=new THREE.Raycaster(); this.tmpV1=new THREE.Vector3(); this.tmpV2=new THREE.Vector3(); this.tmpV3=new THREE.Vector3();
+        this.ray=new THREE.Raycaster(); 
+        this.tmpV1=new THREE.Vector3(); 
+        this.tmpV2=new THREE.Vector3(); 
+        this.tmpV3=new THREE.Vector3();
         this.tmpBasis={forward:new THREE.Vector3(), right:new THREE.Vector3(), up:new THREE.Vector3(), pos:new THREE.Vector3()};
         this.flowBasis=null;
-        const tex=(function(){const R=64,c=document.createElement('canvas'); c.width=c.height=R*2; const g=c.getContext('2d');
-          const gr=g.createRadialGradient(R,R,0,R,R,R); gr.addColorStop(0,'rgba(255,255,255,1)');
-          gr.addColorStop(.45,'rgba(255,255,255,.85)'); gr.addColorStop(.8,'rgba(255,255,255,.18)'); gr.addColorStop(1,'rgba(255,255,255,0)');
-          g.fillStyle=gr; g.fillRect(0,0,c.width,c.height); const t=new THREE.CanvasTexture(c); t.anisotropy=4; t.needsUpdate=true; return t; })();
+        
+        // OPTIMIZATION: Create texture once and reuse
+        const tex=(function(){
+          const R=64,c=document.createElement('canvas'); 
+          c.width=c.height=R*2; 
+          const g=c.getContext('2d');
+          const gr=g.createRadialGradient(R,R,0,R,R,R); 
+          gr.addColorStop(0,'rgba(255,255,255,1)');
+          gr.addColorStop(.45,'rgba(255,255,255,.85)'); 
+          gr.addColorStop(.8,'rgba(255,255,255,.18)'); 
+          gr.addColorStop(1,'rgba(255,255,255,0)');
+          g.fillStyle=gr; 
+          g.fillRect(0,0,c.width,c.height); 
+          const t=new THREE.CanvasTexture(c); 
+          t.anisotropy=2;
+          t.needsUpdate=true; 
+          return t; 
+        })();
+        
+        // OPTIMIZATION: Pre-allocate pool with shared material where possible
+        const sharedMaterial = new THREE.SpriteMaterial({
+          map:tex, 
+          color:0xffffff, 
+          transparent:true, 
+          depthWrite:false, 
+          depthTest:true, 
+          blending:THREE.AdditiveBlending, 
+          opacity:1.0
+        });
+        
         for(let i=0;i<this.data.max;i++){
-          const mat=new THREE.SpriteMaterial({
-            map:tex, color:0xffffff, transparent:true, depthWrite:false, depthTest:true, blending:THREE.AdditiveBlending, opacity:1.0
-          });
-          const s=new THREE.Sprite(mat); s.visible=false; s.scale.setScalar(this.data.sizeStart);
+          // Use shared material for better performance
+          const s=new THREE.Sprite(sharedMaterial); 
+          s.visible=false; 
+          s.scale.setScalar(this.data.sizeStart);
           this.el.object3D.add(s);
-          this.pool.push({obj:s, mat:mat, alive:false, t:0, vel:new THREE.Vector3(), prev:new THREE.Vector3(), phase:Math.random()*Math.PI*2});
+          this.pool.push({
+            obj:s, 
+            alive:false, 
+            t:0, 
+            vel:new THREE.Vector3(), 
+            prev:new THREE.Vector3(), 
+            phase:Math.random()*Math.PI*2
+          });
         }
-        this.depositTex=tex; this.depositGroup=new THREE.Group(); this.el.object3D.add(this.depositGroup);
+        this.depositTex=tex; 
+        this.depositGroup=new THREE.Group(); 
+        this.el.object3D.add(this.depositGroup);
 
         const lungEl=document.getElementById('lung');
-        const attach=()=>{ const m=lungEl && lungEl.getObject3D('mesh'); if(m){ this.mesh=m; } };
+        const attach=()=>{ 
+          const m=lungEl && lungEl.getObject3D('mesh'); 
+          if(m){ 
+            this.mesh=m; 
+            // OPTIMIZATION: Pre-compute bounding sphere for raycasting
+            m.traverse(node => {
+              if (node.isMesh) {
+                if (!node.geometry.boundingSphere) {
+                  node.geometry.computeBoundingSphere();
+                }
+              }
+            });
+          } 
+        };
         if(lungEl){ lungEl.addEventListener('model-loaded', attach); attach(); }
 
         this.el.sceneEl.addEventListener('loaded', ()=>this._snapshotFlowBasis());
         setTimeout(()=>this._snapshotFlowBasis(), 500);
-
-        // Removed keyboard shortcuts for toggling droplets
       },
       _snapshotFlowBasis:function(){
         const cam=document.getElementById('cam'); if(!cam) return;
@@ -210,64 +259,151 @@
         out.pos.set(m.elements[12],m.elements[13],m.elements[14]); return out;
       },
       _spawnOne:function(){
-        const d=this.data, basis=this.tmpBasis; if(!this._cameraBasis(basis)) return;
-        const slot=this.pool.find(p=>!p.alive); if(!slot) return;
-        slot.alive=true; slot.t=0; slot.phase=Math.random()*Math.PI*2;
+        const d=this.data, basis=this.tmpBasis; 
+        if(!this._cameraBasis(basis)) return;
+        
+        const slot=this.pool.find(p=>!p.alive); 
+        if(!slot) return;
+        
+        slot.alive=true; 
+        slot.t=0; 
+        slot.phase=Math.random()*Math.PI*2;
 
         // Spawn in front of camera
         const hw=d.sheetWidth*.5, hh=d.sheetHeight*.5, hd=d.sheetDepth*.5;
         const ox=(Math.random()*2-1)*hw, oy=(Math.random()*2-1)*hh, oz=(d.sheetDist + (Math.random()*2-1)*hd);
         const spawn=new THREE.Vector3().copy(basis.pos).addScaledVector(basis.forward,oz).addScaledVector(basis.right,ox).addScaledVector(basis.up,oy);
 
-        slot.obj.position.copy(spawn); slot.prev.copy(spawn);
-        slot.obj.visible=true; slot.obj.scale.setScalar(d.sizeStart); slot.mat.opacity=1.0;
+        slot.obj.position.copy(spawn); 
+        slot.prev.copy(spawn);
+        slot.obj.visible=true; 
+        slot.obj.scale.setScalar(d.sizeStart);
 
         slot.vel.copy(this.flowBasis?this.flowBasis.forward:basis.forward).multiplyScalar(d.baseSpeed*(.9+.35*Math.random()));
         slot.vel.addScaledVector(basis.right,(Math.random()*2-1)*d.lateral);
         slot.vel.addScaledVector(basis.up,(Math.random()*2-1)*d.lateral);
       },
       _maybeStick:function(_pt, speed){
-        const d=this.data; const p=d.stickBase + d.stickSpeedK*Math.max(0, .6-speed);
+        const d=this.data; 
+        const p=d.stickBase + d.stickSpeedK*Math.max(0, .6-speed);
         return Math.random()<THREE.MathUtils.clamp(p,0,.98);
       },
       _addDeposit:function(pos,normal){
-        const d=this.data; while(this.deposits.length>d.maxDeposits){ const old=this.deposits.shift(); this.depositGroup.remove(old.obj); }
-        const mat=new THREE.SpriteMaterial({map:this.depositTex, color:0xffffff, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, opacity:.95});
-        const s=new THREE.Sprite(mat); s.scale.set(.0065,.0065,1);
-        const n=(normal?normal.clone().normalize():new THREE.Vector3(0,0,1)); s.position.copy(pos).add(n.multiplyScalar(.0015));
-        this.depositGroup.add(s); this.deposits.push({obj:s, mat:mat, t:0, life:d.stickFadeSec*1000});
+        const d=this.data; 
+        while(this.deposits.length>d.maxDeposits){ 
+          const old=this.deposits.shift(); 
+          this.depositGroup.remove(old.obj); 
+        }
+        const mat=new THREE.SpriteMaterial({
+          map:this.depositTex, 
+          color:0xffffff, 
+          transparent:true, 
+          depthWrite:false, 
+          blending:THREE.AdditiveBlending, 
+          opacity:.95
+        });
+        const s=new THREE.Sprite(mat); 
+        s.scale.set(.0065,.0065,1);
+        const n=(normal?normal.clone().normalize():new THREE.Vector3(0,0,1)); 
+        s.position.copy(pos).add(n.multiplyScalar(.0015));
+        this.depositGroup.add(s); 
+        this.deposits.push({obj:s, mat:mat, t:0, life:d.stickFadeSec*1000});
       },
       _step:function(p,dtMs,time){
-        const d=this.data, dt=dtMs/1000; const basis=this.flowBasis||this.tmpBasis; if(!basis.forward.lengthSq()) this._snapshotFlowBasis();
-        p.vel.addScaledVector(basis.forward,d.accel*dt); p.vel.addScaledVector(basis.up,-d.accelDown*dt);
-        const swirlX=Math.sin((time*.001+p.phase)*Math.PI*2*d.swirlHz)*d.swirl, swirlY=Math.cos((time*.0009+p.phase*1.37)*Math.PI*2*d.swirlHz)*d.swirl;
-        p.vel.x+=swirlX*dt; p.vel.y+=swirlY*dt; const drag=Math.pow(1-THREE.MathUtils.clamp(d.drag,0,.999),dt); p.vel.multiplyScalar(drag);
+        const d=this.data, dt=dtMs/1000; 
+        const basis=this.flowBasis||this.tmpBasis; 
+        if(!basis.forward.lengthSq()) this._snapshotFlowBasis();
+        
+        p.vel.addScaledVector(basis.forward,d.accel*dt); 
+        p.vel.addScaledVector(basis.up,-d.accelDown*dt);
+        
+        const swirlX=Math.sin((time*.001+p.phase)*Math.PI*2*d.swirlHz)*d.swirl;
+        const swirlY=Math.cos((time*.0009+p.phase*1.37)*Math.PI*2*d.swirlHz)*d.swirl;
+        p.vel.x+=swirlX*dt; 
+        p.vel.y+=swirlY*dt; 
+        
+        const drag=Math.pow(1-THREE.MathUtils.clamp(d.drag,0,.999),dt); 
+        p.vel.multiplyScalar(drag);
+        
         const next=this.tmpV1.copy(p.obj.position).addScaledVector(p.vel,dt);
 
         if(this.mesh){
-          const dir=this.tmpV2.copy(next).sub(p.prev); const dist=dir.length();
-          if(dist>0){ dir.normalize(); this.ray.set(p.prev,dir); this.ray.far=dist+.002;
-            const hits=this.ray.intersectObject(this.mesh,true);
-            if(hits&&hits.length){ const h=hits[0], sp=p.vel.length();
+          const dir=this.tmpV2.copy(next).sub(p.prev); 
+          const dist=dir.length();
+          if(dist>0){ 
+            dir.normalize(); 
+            this.ray.set(p.prev,dir); 
+            this.ray.far=dist+.002;
+            
+            // OPTIMIZATION: Use simplified raycasting
+            const hits=this.ray.intersectObject(this.mesh,false);
+            if(hits&&hits.length){ 
+              const h=hits[0], sp=p.vel.length();
               const n=h.face&&h.face.normal?this.tmpV3.copy(h.face.normal).transformDirection(h.object.matrixWorld):null;
-              if(this._maybeStick(h.point,sp)){ this._addDeposit(h.point,n); p.alive=false; p.obj.visible=false; return; }
-              else{ if(n){ const v=p.vel; const r=v.clone().sub(n.clone().multiplyScalar(2*v.dot(n))); v.copy(r).multiplyScalar(.25); } else { p.vel.multiplyScalar(.2); }
-                    p.obj.position.copy(h.point).addScaledVector(dir,-.002); p.prev.copy(p.obj.position); return; }
+              if(this._maybeStick(h.point,sp)){ 
+                this._addDeposit(h.point,n); 
+                p.alive=false; 
+                p.obj.visible=false; 
+                return; 
+              }
+              else{ 
+                if(n){ 
+                  const v=p.vel; 
+                  const r=v.clone().sub(n.clone().multiplyScalar(2*v.dot(n))); 
+                  v.copy(r).multiplyScalar(.25); 
+                } else { 
+                  p.vel.multiplyScalar(.2); 
+                }
+                p.obj.position.copy(h.point).addScaledVector(dir,-.002); 
+                p.prev.copy(p.obj.position); 
+                return; 
+              }
             }
           }
         }
-        p.obj.position.copy(next); p.prev.copy(next);
+        p.obj.position.copy(next); 
+        p.prev.copy(next);
 
         const fromCam=this.tmpV2.copy(p.obj.position).sub((this.flowBasis&&this.flowBasis.pos)||this.tmpBasis.pos);
         const along=fromCam.dot((this.flowBasis&&this.flowBasis.forward)||this.tmpBasis.forward);
         if(along < -d.throatDist){ p.alive=false; p.obj.visible=false; }
       },
       tick:function(time,dt){
-        if(!dt) return; const d=this.data;
-        if(d.enabled){ this.acc+=dt; const interval=1000/Math.max(1e-4,d.rate); while(this.acc>=interval){ this._spawnOne(); this.acc-=interval; } }
-        for(const p of this.pool){ if(!p.alive) continue; p.t+=dt; const k=THREE.MathUtils.clamp(p.t/d.life,0,1);
-          const s=d.sizeStart*(1-k)+d.sizeEnd*k; p.obj.scale.set(s,s,1); p.mat.opacity=.95*(1-k); this._step(p,dt,time); if(k>=1){ p.alive=false; p.obj.visible=false; } }
-        for(let i=this.deposits.length-1;i>=0;i--){ const dep=this.deposits[i]; dep.t+=dt; const r=dep.t/dep.life; if(r>=1){ this.depositGroup.remove(dep.obj); this.deposits.splice(i,1);} else{ dep.mat.opacity=.95*(1-r);} }
+        if(!dt) return; 
+        const d=this.data;
+        
+        // OPTIMIZATION: Throttle spawning based on frame rate
+        if(d.enabled){ 
+          this.acc+=dt; 
+          const interval=1000/Math.max(1e-4,d.rate); 
+          while(this.acc>=interval){ 
+            this._spawnOne(); 
+            this.acc-=interval; 
+          } 
+        }
+        
+        for(const p of this.pool){ 
+          if(!p.alive) continue; 
+          p.t+=dt; 
+          const k=THREE.MathUtils.clamp(p.t/d.life,0,1);
+          const s=d.sizeStart*(1-k)+d.sizeEnd*k; 
+          p.obj.scale.set(s,s,1); 
+          p.obj.material.opacity=.95*(1-k); 
+          this._step(p,dt,time); 
+          if(k>=1){ p.alive=false; p.obj.visible=false; } 
+        }
+        
+        for(let i=this.deposits.length-1;i>=0;i--){ 
+          const dep=this.deposits[i]; 
+          dep.t+=dt; 
+          const r=dep.t/dep.life; 
+          if(r>=1){ 
+            this.depositGroup.remove(dep.obj); 
+            this.deposits.splice(i,1);
+          } else{ 
+            dep.mat.opacity=.95*(1-r);
+          } 
+        }
       }
     });
 
@@ -371,19 +507,18 @@
         const el=document.getElementById(id);
         el.addEventListener('click', ()=>open(id));
       });
-
-      // Removed hotspot toggle keyboard shortcut
     })();
 
-    /* ---------- Narration end → Bell → Late Prompt → Classroom ---------- */
+    /* ---------- NARRATION END → BELL → LATE PROMPT (IMMEDIATE) ---------- */
     (function(){
-      const audio    = document.getElementById('narration');
-      const bell     = document.getElementById('bell');
+      const audio = document.getElementById('narration');
+      const bell = document.getElementById('bell');
       const latePrompt = document.getElementById('latePrompt');
       const goNowBtn = document.getElementById('goNowBtn');
       const bellNote = document.getElementById('bellNote');
 
-      // FIXED: Use absolute path from server root
+      let endSequenceTriggered = false;
+
       function goToClassroom(){ 
         console.log('NAVIGATING TO: /classroom_scene.html');
         window.location.href = "/classroom_scene.html";
@@ -392,46 +527,92 @@
       function showLatePrompt(){ 
         console.log('Showing LATE FOR CLASS prompt');
         latePrompt.style.display = 'block';
+        
+        // Auto-navigate after 8 seconds if user doesn't click
+        setTimeout(() => {
+          if (latePrompt.style.display === 'block') {
+            console.log('Auto-navigating to classroom after timeout');
+            goToClassroom();
+          }
+        }, 8000);
       }
 
       goNowBtn.addEventListener('click', goToClassroom);
 
-      // FIXED: Improved bell audio handling with fallback
-      function playBellAndShowPrompt() {
-        console.log('Attempting to play bell audio');
+      // FIXED: SIMPLIFIED immediate bell and prompt sequence
+      function triggerEndSequence() {
+        if (endSequenceTriggered) return;
+        endSequenceTriggered = true;
         
-        // Reset bell audio to beginning
-        bell.currentTime = 0;
+        console.log('Triggering immediate end sequence');
         
-        // Try to play the bell
-        const bellPromise = bell.play();
+        // Stop aerosol system to improve performance during transition
+        const emitter = document.getElementById('aeroEmitter');
+        if (emitter && emitter.components['droplet-advect']) {
+          emitter.setAttribute('droplet-advect', 'enabled', false);
+        }
         
-        if (bellPromise) {
-          bellPromise.then(() => {
-            console.log('Bell playing successfully');
-            // When bell finishes, show the late prompt
-            bell.addEventListener('ended', showLatePrompt, {once: true});
+        // Show prompt immediately (don't wait for bell)
+        showLatePrompt();
+        
+        // Try to play bell simultaneously
+        try {
+          console.log('Attempting to play bell audio');
+          bell.currentTime = 0;
+          bell.play().then(() => {
+            console.log('Bell audio playing successfully');
           }).catch(e => {
             console.log('Bell audio failed to play:', e);
-            bellNote.style.display='block';
-            // If bell fails, show prompt after a short delay
-            setTimeout(showLatePrompt, 1000);
+            bellNote.style.display = 'block';
           });
-        } else {
-          // If no promise returned, show prompt after delay
-          setTimeout(showLatePrompt, 1000);
+        } catch (e) {
+          console.log('Bell play error:', e);
+          bellNote.style.display = 'block';
         }
       }
 
-      // FIXED: Start narration automatically when page loads
+      // FIXED: Robust narration end detection
+      function setupNarrationEndListener() {
+        console.log('Setting up narration end listener');
+        
+        // Method 1: Standard ended event
+        audio.addEventListener('ended', function onNarrationEnd() {
+          console.log('Narration ended event fired');
+          audio.removeEventListener('ended', onNarrationEnd);
+          triggerEndSequence();
+        });
+
+        // Method 2: Time-based fallback
+        const checkNarrationProgress = setInterval(() => {
+          if (audio.duration && audio.currentTime >= audio.duration - 0.5) {
+            console.log('Time-based narration end detected');
+            clearInterval(checkNarrationProgress);
+            triggerEndSequence();
+          }
+        }, 1000);
+
+        // Method 3: Global timeout fallback (5 minutes max)
+        setTimeout(() => {
+          if (!endSequenceTriggered) {
+            console.log('Fallback timeout - triggering end sequence');
+            triggerEndSequence();
+          }
+        }, 300000); // 5 minutes
+      }
+
+      // FIXED: Start narration and setup listeners when page loads
       window.addEventListener('load', function() {
-        console.log('Page loaded, starting narration');
+        console.log('Page loaded, starting narration and setting up end listener');
+        
+        // Setup the end listener first
+        setupNarrationEndListener();
+        
+        // Then start narration after a short delay
         setTimeout(function() {
           const playPromise = audio.play();
           if (playPromise) {
             playPromise.catch(e => {
               console.log('Narration auto-play failed:', e);
-              // If auto-play fails, show instructions
               showError('Click anywhere to start narration');
               document.addEventListener('click', function startOnClick() {
                 audio.play();
@@ -442,17 +623,24 @@
         }, 1000);
       });
 
-      // When narration ends, play bell and then show late prompt
-      audio.addEventListener('ended', ()=>{
-        console.log('Narration ended - playing school bell');
-        playBellAndShowPrompt();
-      });
-
-      // FIXED: Add manual trigger for testing
+      // FIXED: Add reliable manual trigger for testing
       window.__triggerEndScene = function() {
         console.log('MANUALLY triggering end scene');
-        playBellAndShowPrompt();
+        triggerEndSequence();
       };
+      
+      // Debug: Log audio events
+      audio.addEventListener('loadeddata', () => console.log('Narration loaded, duration:', audio.duration));
+      audio.addEventListener('canplay', () => console.log('Narration can play'));
+      audio.addEventListener('play', () => console.log('Narration started playing'));
+      audio.addEventListener('timeupdate', () => {
+        if (audio.duration) {
+          const percent = (audio.currentTime / audio.duration * 100).toFixed(1);
+          if (percent % 10 === 0) {
+            console.log(`Narration progress: ${percent}%`);
+          }
+        }
+      });
     })();
 
     /* ---------- Materials + centering ---------- */
