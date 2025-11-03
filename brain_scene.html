@@ -250,37 +250,51 @@ function initializeApplication() {
   function applyBrainTransform() {
     const targetBrain = brain.getAttribute('visible') === 'true' ? brain : fallbackBrain;
     if (targetBrain.object3D) {
-      targetBrain.object3D.rotation.set(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(yaw), 0);
+      // Convert degrees to radians for Three.js rotation
+      targetBrain.object3D.rotation.set(
+        THREE.MathUtils.degToRad(pitch), 
+        THREE.MathUtils.degToRad(yaw), 
+        0
+      );
       targetBrain.object3D.position.set(0, 1, zoomZ);
+      
+      // Force update the matrix to ensure changes are applied
+      targetBrain.object3D.updateMatrix();
     }
   }
 
-  // Keyboard controls for rotation
+  // Enhanced keyboard controls for rotation
   window.addEventListener('keydown', (e) => {
+    // Prevent default behavior for arrow keys to avoid page scrolling
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+      e.preventDefault();
+    }
+    
     if (e.key === 'ArrowLeft') { 
-      yaw -= 3; 
+      yaw -= 8; // Increased rotation speed for better control
       applyBrainTransform(); 
     }
     if (e.key === 'ArrowRight') { 
-      yaw += 3; 
+      yaw += 8; 
       applyBrainTransform(); 
     }
     if (e.key === 'ArrowUp') { 
-      pitch -= 3; 
+      pitch -= 8; 
       applyBrainTransform(); 
     }
     if (e.key === 'ArrowDown') { 
-      pitch += 3; 
+      pitch += 8; 
       applyBrainTransform(); 
     }
   });
 
-  // Mouse wheel for zoom
+  // Enhanced mouse wheel for zoom
   window.addEventListener('wheel', (e) => {
-    const dz = e.deltaY > 0 ? -0.15 : 0.15;
+    e.preventDefault();
+    const dz = e.deltaY > 0 ? -0.25 : 0.25; // Increased zoom speed
     zoomZ = Math.max(Z_MIN, Math.min(Z_MAX, zoomZ + dz));
     applyBrainTransform();
-  }, { passive: true });
+  }, { passive: false }); // Changed to non-passive to allow preventDefault
 
   // Apply initial transform
   applyBrainTransform();
@@ -352,6 +366,12 @@ function initializeApplication() {
     
     placementDot.setAttribute('visible', 'false');
     currentDotPosition = null;
+    
+    // Reset brain position for recording
+    yaw = 0;
+    pitch = 0;
+    zoomZ = -2;
+    applyBrainTransform();
   }
 
   // Click on brain to place dot
