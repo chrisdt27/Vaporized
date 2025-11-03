@@ -54,12 +54,36 @@
       font-size:12px; color:#334155;
     }
     
+    /* Loading Overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #fff;
+      color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      font-family: monospace;
+    }
+    
     /* Fade transition */
     .fade-out{ animation:fade 0.9s forwards }
     @keyframes fade { to { opacity:0; transform:scale(.96) } }
   </style>
 </head>
 <body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div style="text-align: center;">
+    <h3>Loading Brain Scene...</h3>
+    <div id="loadingStatus">Initializing</div>
+  </div>
+</div>
 
 <div class="whiteboard" id="wb">
   <h2 id="wbQ">How does vaping affect the adolescent brain?</h2>
@@ -117,9 +141,9 @@
   <a-entity light="type: directional; intensity: 0.9; color:#ffffff" position="-2 2 -2"></a-entity>
   <a-entity light="type: directional; intensity: 0.8; color:#ffffff" position="-3 3 3"></a-entity>
 
-  <a-assets timeout="20000">
-    <!-- SIMPLE FIX: Use direct path and add error handling -->
-    <a-asset-item id="brainModel" src="../assets/models/Brain.glb"></a-asset-item>
+  <a-assets timeout="60000">
+    <!-- VERCEL FIX: Use relative path -->
+    <a-asset-item id="brainModel" src="./assets/models/Brain.glb"></a-asset-item>
   </a-assets>
 
   <a-circle id="shadow" position="0 0.2 -2" rotation="-90 0 0" radius="0.6" color="#000" opacity="0.10"></a-circle>
@@ -133,18 +157,27 @@
 </a-scene>
 
 <script>
-// === SIMPLE BRAIN LOADING FIX ===
-console.log('Starting brain scene...');
+// VERCEL FIX: Enhanced initialization
+console.log('Starting brain scene on Vercel...');
 
 // DOM Elements
 const brain = document.getElementById('brain');
 const scene = document.querySelector('a-scene');
+const loadingOverlay = document.getElementById('loadingOverlay');
+const loadingStatus = document.getElementById('loadingStatus');
 
-// Simple brain loading with direct event listeners
+function updateStatus(status) {
+  if(loadingStatus) loadingStatus.textContent = status;
+  console.log('Brain Loading:', status);
+}
+
+updateStatus('Initializing scene...');
+
+// Enhanced brain loading for Vercel
 brain.addEventListener('model-loaded', function() {
-  console.log('✅ Brain model loaded successfully!');
+  console.log('✅ Brain model loaded successfully on Vercel!');
+  updateStatus('Applying materials...');
   
-  // Apply materials
   const mesh = brain.getObject3D('mesh');
   if (mesh) {
     mesh.traverse(n => {
@@ -156,16 +189,29 @@ brain.addEventListener('model-loaded', function() {
     });
   }
   
-  // Apply initial position
   applyBrainTransform();
+  updateStatus('Complete!');
+  
+  setTimeout(() => {
+    if(loadingOverlay) loadingOverlay.style.display = 'none';
+  }, 1000);
 });
 
 brain.addEventListener('model-error', function(evt) {
-  console.error('❌ Brain model failed to load:', evt.detail);
-  alert('Failed to load brain model. Check console for details.');
+  console.error('❌ Brain model failed to load on Vercel:', evt.detail);
+  updateStatus('Model failed - trying fallback...');
+  
+  // Try alternative path
+  setTimeout(() => {
+    brain.setAttribute('gltf-model', '../assets/models/Brain.glb');
+  }, 2000);
+  
+  setTimeout(() => {
+    if(loadingOverlay) loadingOverlay.style.display = 'none';
+  }, 5000);
 });
 
-// === REST OF ORIGINAL CODE ===
+// === REST OF ORIGINAL CODE WITH VERCEL ENHANCEMENTS ===
 const call  = document.getElementById('callout');
 const title = document.getElementById('callTitle');
 const body  = document.getElementById('callBody');
@@ -187,8 +233,10 @@ let yaw=0, pitch=0, zoomZ=-2;
 const Z_MIN=-3.0, Z_MAX=-0.8;
 
 function applyBrainTransform(){
-  brain.object3D.rotation.set(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(yaw), 0);
-  brain.object3D.position.set(0,1,zoomZ);
+  if (brain.object3D) {
+    brain.object3D.rotation.set(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(yaw), 0);
+    brain.object3D.position.set(0,1,zoomZ);
+  }
 }
 
 // Keyboard controls for rotation
@@ -233,22 +281,22 @@ const answerData = {
   A: {
     title: 'Prefrontal Cortex — Attention & Control',
     body: 'Nicotine disrupts executive control, degrading sustained attention and focus.',
-    narration: "../assets/audio/vo/vo_A.mp3"
+    narration: "./assets/audio/vo/vo_A.mp3"
   },
   B: {
     title: 'Hippocampus — Learning & Memory',
     body: 'Repeated nicotine exposure impairs hippocampal plasticity, affecting learning and memory formation.',
-    narration: "../assets/audio/vo/vo_B.mp3"
+    narration: "./assets/audio/vo/vo_B.mp3"
   },
   C: {
     title: 'Nucleus Accumbens — Reward & Addiction',
     body: 'Nicotine drives dopamine surges in reward pathways, increasing addiction vulnerability.',
-    narration: "../assets/audio/vo/vo_C.mp3"
+    narration: "./assets/audio/vo/vo_C.mp3"
   },
   D: {
     title: 'Amygdala — Mood & Anxiety',
     body: 'Withdrawal and nicotine effects on amygdala contribute to mood instability and anxiety.',
-    narration: "../assets/audio/vo/vo_D.mp3"
+    narration: "./assets/audio/vo/vo_D.mp3"
   }
 };
 
@@ -276,7 +324,7 @@ function startRecording(answer) {
   placementDot.setAttribute('visible', 'false');
   currentDotPosition = null;
   
-  console.log(`Recording mode started for answer ${answer}`);
+  console.log(`Recording mode started for answer ${answer} on Vercel`);
 }
 
 // Click on brain to place dot
@@ -490,7 +538,7 @@ function playScene(id){
     startLeaderWorld(worldPos);
     
     const zoomIn = Math.min(S.zoomZ + 0.25, Z_MAX);
-    const audio = new Audio(S.narration || `../assets/audio/vo/vo_${id}.mp3`);
+    const audio = new Audio(S.narration || `./assets/audio/vo/vo_${id}.mp3`);
     
     audio.onended = async () => {
       await easeZoom(S.zoomZ, 800);
@@ -517,6 +565,32 @@ function playScene(id){
   });
 }
 
+// VERCEL FIX: Enhanced auto-run with better error handling
+function enhancedAutoRunSequence() {
+  console.log('Starting enhanced auto-run on Vercel');
+  
+  const availableScenes = Object.keys(scenes).filter(key => scenes[key] !== null);
+  console.log('Available scenes on Vercel:', availableScenes);
+  
+  if (availableScenes.length === 0) {
+    console.log('No scenes available on Vercel');
+    return;
+  }
+  
+  (async function() {
+    for (let i = 0; i < availableScenes.length; i++) {
+      const sceneId = availableScenes[i];
+      try {
+        await playScene(sceneId);
+        await new Promise(r => setTimeout(r, 1000));
+      } catch (error) {
+        console.error(`Vercel error playing scene ${sceneId}:`, error);
+      }
+    }
+    ctaBox.style.display = 'block';
+  })();
+}
+
 async function autoRunSequence(){
   const order = ['A','B','C','D'];
   for (let i = 0; i < order.length; i++){
@@ -535,7 +609,7 @@ function setActiveWB(id){
   if(id==='D'){ wbA.classList.add('done'); wbB.classList.add('done'); wbC.classList.add('done'); wbD.classList.add('active'); }
 }
 
-function showError(msg){ console.error(msg); }
+function showError(msg){ console.error('Vercel Brain Error:', msg); }
 
 let scenes = {A:null, B:null, C:null, D:null};
 const STORAGE_KEY = 'vape_brain_scenes';
@@ -582,13 +656,18 @@ if(loadScenes()){
     }
   });
   
-  // Auto-play if not in dev mode and all scenes are recorded
+  // VERCEL FIX: Use enhanced auto-run with longer timeout
   if (!DEV && Object.values(scenes).every(scene => scene !== null)) {
     setTimeout(() => {
-      autoRunSequence();
-    }, 1000);
+      enhancedAutoRunSequence();
+    }, 2000);
   }
 }
+
+// VERCEL FIX: Global error handler
+window.addEventListener('error', function(e) {
+  console.error('Global error on Vercel:', e.error);
+});
 </script>
 
 </body>
