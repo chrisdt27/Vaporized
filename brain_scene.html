@@ -51,7 +51,7 @@
     .vr-controls-help{
       position:fixed; left:50%; transform:translateX(-50%); bottom:20px; z-index:1200; 
       background:rgba(0,0,0,0.8); border:1px solid #444; border-radius:10px; padding:12px 16px;
-      font-size:14px; color:#fff; text-align:center; backdrop-filter: blur(10px);
+      font-size:14px; color:#fff; text-align:center; backdrop-filter: blur(10px); display: none;
     }
     .vr-controls-help strong{ color:#ffd700; display:block; margin-bottom:4px; }
     
@@ -84,11 +84,9 @@
 
 <!-- Placement Mode Controls -->
 <div class="placement-ui" id="placementUI">
-  <h4>📹 Placement Mode: <span id="currentAnswer">A</span></h4>
+  <h4>Placement Mode: <span id="currentAnswer">A</span></h4>
   <button id="saveBtn">Save Position</button>
   <button id="cancelBtn">Cancel</button>
-  <button id="exportBtn">Export All Data</button>
-  <button id="clearBtn">Clear All</button>
 </div>
 
 <!-- Instructions -->
@@ -99,7 +97,7 @@
 <!-- VR Controls Help -->
 <div class="vr-controls-help" id="vrControls">
   <strong>VR Controls</strong>
-  <div>Grip: Rotate Brain • Trigger: Zoom • A/X: Next Scene</div>
+  <div>Move controllers to rotate view • Trigger to interact</div>
 </div>
 
 <div class="cta" id="ctaBox"><button id="ctaBtn">Continue to Next Scene</button></div>
@@ -114,14 +112,17 @@
   
   <a-assets timeout="60000">
     <a-asset-item id="brainModel" src="./assets/models/Brain.glb"></a-asset-item>
-    <audio id="clickSound" src="./assets/audio/click.mp3" preload="auto"></audio>
   </a-assets>
 
   <!-- Light background environment -->
   <a-sky color="#f0f2f5"></a-sky>
 
   <a-entity id="rig" position="0 1.6 0">
-    <a-entity id="cam" camera="fov: 80" look-controls="pointerLockEnabled: true"></a-entity>
+    <a-entity id="cam" 
+              camera="fov: 80" 
+              look-controls="pointerLockEnabled: true; reverseMouseDrag: false"
+              wasd-controls="enabled: false">
+    </a-entity>
   </a-entity>
 
   <!-- Enhanced Lighting for light background -->
@@ -129,28 +130,25 @@
   <a-entity light="type: directional; intensity: 1.2; color:#ffffff" position="3 5 3" shadow="cast:true; shadowMapSize: 1024"></a-entity>
   <a-entity light="type: point; intensity: 0.5; color:#e3f2fd" position="-2 3 -1" distance="8"></a-entity>
 
-  <!-- Interactive Brain with better physics -->
-  <a-entity id="brain-rig" position="0 1.2 -3">
+  <!-- Brain Container - This rotates and scales -->
+  <a-entity id="brain-container" position="0 1.2 -3" rotation="0 0 0" scale="1 1 1">
+    <!-- Brain Model -->
     <a-entity id="brain" 
               gltf-model="#brainModel" 
               position="0 0 0" 
               rotation="0 0 0" 
-              scale="1.2 1.2 1.2" 
+              scale="1 1 1" 
               shadow="cast:true; receive:true"
-              class="clickable"
-              animation__rotate="property: rotation; to: 0 360 0; loop: true; dur: 40000; easing: linear; pauseEvents: mouseenter">
+              class="clickable">
     </a-entity>
-  </a-entity>
-
-  <!-- Permanent dots container - these stay with the brain -->
-  <a-entity id="permanent-dots">
-    <!-- Dots will be added here programmatically -->
+    
+    <!-- Permanent dots will be added here as children -->
   </a-entity>
 
   <!-- Visual indicator for placement dot (temporary during placement) -->
   <a-entity id="placement-dot" visible="false">
-    <a-sphere radius="0.03" color="#ff4444" emissive="#ff0000" emissiveIntensity="0.5"></a-sphere>
-    <a-ring radius="0.05" color="#ff4444" opacity="0.3" rotation="-90 0 0"></a-ring>
+    <a-sphere radius="0.02" color="#ff4444" emissive="#ff0000" emissiveIntensity="0.8"></a-sphere>
+    <a-ring radius="0.03" color="#ff4444" opacity="0.5" rotation="-90 0 0"></a-ring>
   </a-entity>
 
   <!-- VR Controllers -->
@@ -166,12 +164,8 @@
   let sceneInitialized = false;
   const brain = document.getElementById('brain');
   const scene = document.querySelector('a-scene');
-  const brainRig = document.getElementById('brain-rig');
+  const brainContainer = document.getElementById('brain-container');
   
-  // Auto-rotate brain slowly when not interacting
-  let autoRotate = true;
-  let isInteracting = false;
-
   function tryLoadModel() {
     const modelPaths = [
       './assets/models/Brain.glb',
@@ -260,25 +254,24 @@ function initializeApplication() {
   const ctaBtn = document.getElementById('ctaBtn');
   const wbA = document.getElementById('wbA'), wbB = document.getElementById('wbB'), wbC = document.getElementById('wbC'), wbD = document.getElementById('wbD');
   const placementDot = document.getElementById('placement-dot');
-  const permanentDots = document.getElementById('permanent-dots');
   const placementUI = document.getElementById('placementUI');
   const instructions = document.getElementById('instructions');
   const currentAnswerSpan = document.getElementById('currentAnswer');
   const saveBtn = document.getElementById('saveBtn');
   const cancelBtn = document.getElementById('cancelBtn');
-  const brainRig = document.getElementById('brain-rig');
+  const brainContainer = document.getElementById('brain-container');
   const brain = document.getElementById('brain');
   const scene = document.querySelector('a-scene');
   const vrControls = document.getElementById('vrControls');
 
-  // Enhanced 3D Controls
+  // Brain movement state
   let isRotating = false;
   let lastMouseX = 0;
   let lastMouseY = 0;
   let brainRotation = { x: 0, y: 0 };
   let brainScale = 1;
-  const SCALE_MIN = 0.5;
-  const SCALE_MAX = 2.0;
+  const SCALE_MIN = 0.3;
+  const SCALE_MAX = 3.0;
 
   // Placement Mode State
   let isPlacementMode = false;
@@ -323,15 +316,17 @@ function initializeApplication() {
   scene.addEventListener('touchstart', startRotation);
   
   function startRotation(e) {
+    // Only allow rotation if not in placement mode or if we're specifically interacting with the brain
+    if (e.target.closest('.whiteboard') || e.target.closest('.placement-ui')) {
+      return; // Don't rotate if clicking on UI elements
+    }
+    
     isRotating = true;
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
     const clientY = e.clientY || (e.touches && e.touches[0].clientY);
     
     lastMouseX = clientX;
     lastMouseY = clientY;
-    
-    // Stop auto-rotation during interaction
-    brain.removeAttribute('animation__rotate');
     
     document.addEventListener('mousemove', rotateBrain);
     document.addEventListener('touchmove', rotateBrain);
@@ -348,13 +343,13 @@ function initializeApplication() {
     const deltaX = clientX - lastMouseX;
     const deltaY = clientY - lastMouseY;
     
-    brainRotation.y += deltaX * 0.5;
-    brainRotation.x += deltaY * 0.5;
+    brainRotation.y += deltaX * 0.8; // Faster rotation
+    brainRotation.x += deltaY * 0.8;
     
     // Limit vertical rotation
     brainRotation.x = Math.max(-90, Math.min(90, brainRotation.x));
     
-    brainRig.object3D.rotation.set(
+    brainContainer.object3D.rotation.set(
       THREE.MathUtils.degToRad(brainRotation.x),
       THREE.MathUtils.degToRad(brainRotation.y),
       0
@@ -368,18 +363,6 @@ function initializeApplication() {
     isRotating = false;
     document.removeEventListener('mousemove', rotateBrain);
     document.removeEventListener('touchmove', rotateBrain);
-    
-    // Restart auto-rotation after a delay
-    setTimeout(() => {
-      if (!isRotating) {
-        brain.setAttribute('animation__rotate', {
-          property: 'rotation',
-          to: `0 ${brainRotation.y + 360} 0`,
-          dur: 40000,
-          easing: 'linear'
-        });
-      }
-    }, 2000);
   }
 
   // Enhanced Zoom with Scroll
@@ -388,7 +371,7 @@ function initializeApplication() {
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
     brainScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, brainScale * zoomFactor));
     
-    brainRig.object3D.scale.set(brainScale, brainScale, brainScale);
+    brainContainer.object3D.scale.set(brainScale, brainScale, brainScale);
   }, { passive: false });
 
   // Placement Mode Functions
@@ -419,9 +402,7 @@ function initializeApplication() {
     }
     
     savedPositions[currentPlacementAnswer] = {
-      position: currentDotPosition,
-      rotation: { x: brainRotation.x, y: brainRotation.y },
-      scale: brainScale
+      position: currentDotPosition
     };
     
     // Create permanent dot
@@ -464,17 +445,16 @@ function initializeApplication() {
     const dot = document.createElement('a-entity');
     dot.setAttribute('id', `dot-${answer}`);
     
-    // Position dot relative to brain
+    // Position dot relative to brain (in local coordinates)
     dot.object3D.position.set(localPosition[0], localPosition[1], localPosition[2]);
     
-    // Make dot a child of the brain so it moves with it
-    brain.appendChild(dot);
+    // Make dot a child of the brain container so it moves/rotates/scales with the brain
+    brainContainer.appendChild(dot);
     
-    // Create visual dot with label
+    // Create simple red dot without text label
     dot.innerHTML = `
-      <a-sphere radius="0.03" color="#ff4444" emissive="#ff0000" emissiveIntensity="0.5"></a-sphere>
-      <a-ring radius="0.05" color="#ff4444" opacity="0.3" rotation="-90 0 0"></a-ring>
-      <a-text value="${answer}" color="#fff" align="center" position="0 0.05 0.02" scale="2 2 2"></a-text>
+      <a-sphere radius="0.02" color="#ff4444" emissive="#ff0000" emissiveIntensity="0.8"></a-sphere>
+      <a-ring radius="0.03" color="#ff4444" opacity="0.5" rotation="-90 0 0"></a-ring>
     `;
   }
 
@@ -488,24 +468,12 @@ function initializeApplication() {
         placementDot.object3D.position.copy(point);
         placementDot.setAttribute('visible', 'true');
         
-        // Convert to local brain coordinates
-        const localPosition = brain.object3D.worldToLocal(point.clone());
+        // Convert to local brain container coordinates
+        const localPosition = brainContainer.object3D.worldToLocal(point.clone());
         currentDotPosition = [localPosition.x, localPosition.y, localPosition.z];
         
         // Show leader line to callout
         showLeaderLine(point);
-      } else {
-        // Normal mode: just show feedback
-        placementDot.object3D.position.copy(point);
-        placementDot.setAttribute('visible', 'true');
-        setTimeout(() => placementDot.setAttribute('visible', 'false'), 500);
-      }
-      
-      // Play click sound if available
-      const clickSound = document.getElementById('clickSound');
-      if (clickSound) {
-        clickSound.currentTime = 0;
-        clickSound.play().catch(() => {});
       }
     }
   });
@@ -566,9 +534,8 @@ function initializeApplication() {
       
       // If we have a saved position, show the dot and leader line
       if (savedPositions[id]) {
-        const worldPos = brain.object3D.localToWorld(
-          new THREE.Vector3(...savedPositions[id].position)
-        );
+        const localPos = new THREE.Vector3(...savedPositions[id].position);
+        const worldPos = brainContainer.object3D.localToWorld(localPos);
         showLeaderLine(worldPos);
       }
       
@@ -600,22 +567,6 @@ function initializeApplication() {
 
   saveBtn.addEventListener('click', saveCurrentPosition);
   cancelBtn.addEventListener('click', exitPlacementMode);
-
-  document.getElementById('exportBtn').addEventListener('click', () => {
-    const data = JSON.stringify(savedPositions, null, 2);
-    navigator.clipboard.writeText(data);
-    alert('Position data copied to clipboard!');
-  });
-
-  document.getElementById('clearBtn').addEventListener('click', () => {
-    if (confirm('Clear all saved positions?')) {
-      savedPositions = { A: null, B: null, C: null, D: null };
-      localStorage.removeItem('brain_positions');
-      permanentDots.innerHTML = '';
-      [wbA, wbB, wbC, wbD].forEach(el => el.classList.remove('done'));
-      alert('All positions cleared.');
-    }
-  });
 
   // Auto-run the experience if all positions are saved
   function autoRunExperience() {
@@ -662,6 +613,15 @@ function initializeApplication() {
     const r = call.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
+
+  // VR event handlers
+  scene.addEventListener('enter-vr', function() {
+    vrControls.style.display = 'block';
+  });
+
+  scene.addEventListener('exit-vr', function() {
+    vrControls.style.display = 'none';
+  });
 
   // CTA handler
   ctaBtn.addEventListener('click', () => {
