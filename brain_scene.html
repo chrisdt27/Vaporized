@@ -285,8 +285,8 @@ function initializeApplication() {
   // Apply initial transform
   applyBrainTransform();
 
-  // Recording Mode
-  const DEV = /[?&]dev=1/.test(location.search);
+  // Recording Mode - ENABLE ON VERCEl
+  const DEV = true; // Force enable recording mode on Vercel
   if (DEV) {
     recordingUI.style.display = 'block';
   }
@@ -295,31 +295,45 @@ function initializeApplication() {
   let currentDotPosition = null;
   let animRAF = null;
 
-  // Answer data
+  // Answer data with pre-configured positions for Vercel
   const answerData = {
     A: {
       title: 'Prefrontal Cortex — Attention & Control',
       body: 'Nicotine disrupts executive control, degrading sustained attention and focus.',
-      narration: "./assets/audio/vo/vo_A.mp3"
+      narration: "./assets/audio/vo/vo_A.mp3",
+      // Pre-configured position for Vercel
+      preconfigured: { yaw: 0, pitch: 0, zoomZ: -2, dot: [0.2, 0.3, -0.1] }
     },
     B: {
       title: 'Hippocampus — Learning & Memory',
       body: 'Repeated nicotine exposure impairs hippocampal plasticity, affecting learning and memory formation.',
-      narration: "./assets/audio/vo/vo_B.mp3"
+      narration: "./assets/audio/vo/vo_B.mp3",
+      preconfigured: { yaw: 45, pitch: 10, zoomZ: -1.8, dot: [-0.1, 0.2, 0.15] }
     },
     C: {
       title: 'Nucleus Accumbens — Reward & Addiction',
       body: 'Nicotine drives dopamine surges in reward pathways, increasing addiction vulnerability.',
-      narration: "./assets/audio/vo/vo_C.mp3"
+      narration: "./assets/audio/vo/vo_C.mp3",
+      preconfigured: { yaw: -30, pitch: -5, zoomZ: -2.2, dot: [0.15, -0.1, 0.2] }
     },
     D: {
       title: 'Amygdala — Mood & Anxiety',
       body: 'Withdrawal and nicotine effects on amygdala contribute to mood instability and anxiety.',
-      narration: "./assets/audio/vo/vo_D.mp3"
+      narration: "./assets/audio/vo/vo_D.mp3",
+      preconfigured: { yaw: 90, pitch: 15, zoomZ: -1.5, dot: [-0.2, 0.1, -0.15] }
     }
   };
 
-  // Click on answer buttons to start recording
+  // Click on answer buttons to start recording OR play scene
+  function handleAnswerClick(answer) {
+    if (DEV) {
+      startRecording(answer);
+    } else {
+      // In production, play the scene immediately
+      playScene(answer);
+    }
+  }
+
   function startRecording(answer) {
     if (!DEV) return;
     
@@ -438,10 +452,10 @@ function initializeApplication() {
   }
 
   // Wire up buttons
-  wbA.addEventListener('click', () => startRecording('A'));
-  wbB.addEventListener('click', () => startRecording('B'));
-  wbC.addEventListener('click', () => startRecording('C'));
-  wbD.addEventListener('click', () => startRecording('D'));
+  wbA.addEventListener('click', () => handleAnswerClick('A'));
+  wbB.addEventListener('click', () => handleAnswerClick('B'));
+  wbC.addEventListener('click', () => handleAnswerClick('C'));
+  wbD.addEventListener('click', () => handleAnswerClick('D'));
 
   saveBtn.addEventListener('click', saveCurrentPosition);
   cancelBtn.addEventListener('click', cancelRecording);
@@ -528,17 +542,17 @@ function initializeApplication() {
 
   function playScene(id) {
     return new Promise((resolve) => {
-      if (!scenes[id]) { 
-        return resolve(0); 
-      }
-      
       // Stop any currently playing audio
       if (currentAudio) {
         currentAudio.pause();
         currentAudio = null;
       }
       
-      const S = scenes[id];
+      const S = scenes[id] || answerData[id].preconfigured;
+      if (!S) { 
+        return resolve(0); 
+      }
+      
       yaw = S.yaw; 
       pitch = S.pitch; 
       zoomZ = S.zoomZ; 
@@ -585,14 +599,14 @@ function initializeApplication() {
     });
   }
 
-  // Auto-run sequence - only runs once
+  // Auto-run sequence - runs with preconfigured positions
   let autoRunStarted = false;
   
   function autoRunSequence() {
-    if (autoRunStarted) return; // Prevent multiple auto-runs
+    if (autoRunStarted) return;
     autoRunStarted = true;
     
-    const availableScenes = Object.keys(scenes).filter(key => scenes[key] !== null);
+    const availableScenes = Object.keys(answerData);
     
     if (availableScenes.length === 0) return;
     
@@ -653,22 +667,13 @@ function initializeApplication() {
     }, 900);
   });
 
-  // Load existing scenes and auto-play if not in dev mode
-  if (loadScenes()) {
-    Object.keys(scenes).forEach(key => {
-      if (scenes[key]) {
-        const element = document.getElementById(`wb${key}`);
-        if (element) element.classList.add('done');
-      }
-    });
-    
-    if (!DEV && Object.values(scenes).every(scene => scene !== null)) {
-      // Single auto-run after a short delay
-      setTimeout(() => {
-        autoRunSequence();
-      }, 1500);
-    }
-  }
+  // Load existing scenes and auto-play with preconfigured positions
+  loadScenes(); // Try to load, but don't depend on it
+  
+  // Auto-run with preconfigured positions after a short delay
+  setTimeout(() => {
+    autoRunSequence();
+  }, 1500);
 }
 </script>
 </body>
