@@ -97,7 +97,7 @@
   <div id="bellNote">Bell audio not found; showing prompt silently.</div>
 
   <!-- Audio - corrected relative paths -->
-  <audio id="narration" src="../assets/audio/lung_narration.mp3" autoplay preload="auto" playsinline></audio>
+  <audio id="narration" src="../assets/audio/lung_narration.mp3" preload="auto" playsinline></audio>
   <audio id="bell" src="../assets/audio/school_bell.mp3" preload="auto"></audio>
 
   <script>
@@ -383,7 +383,7 @@
       const goNowBtn = document.getElementById('goNowBtn');
       const bellNote = document.getElementById('bellNote');
 
-      // FIXED PATH - Use absolute path from server root
+      // FIXED: Use absolute path from server root
       function goToClassroom(){ 
         console.log('NAVIGATING TO: /classroom_scene.html');
         window.location.href = "/classroom_scene.html";
@@ -396,30 +396,63 @@
 
       goNowBtn.addEventListener('click', goToClassroom);
 
-      // When narration ends, play bell and then show late prompt
-      audio.addEventListener('ended', ()=>{
-        console.log('Narration ended - playing school bell immediately');
+      // FIXED: Improved bell audio handling with fallback
+      function playBellAndShowPrompt() {
+        console.log('Attempting to play bell audio');
         
-        // Play the school bell immediately after narration
-        const bellPromise = bell.play().catch(e => {
-          console.log('Bell audio failed:', e);
-          bellNote.style.display='block';
-          // If bell fails, show prompt immediately
-          showLatePrompt();
-          return null;
-        });
-
+        // Reset bell audio to beginning
+        bell.currentTime = 0;
+        
+        // Try to play the bell
+        const bellPromise = bell.play();
+        
         if (bellPromise) {
           bellPromise.then(() => {
             console.log('Bell playing successfully');
-            // When bell finishes, show the late prompt immediately
+            // When bell finishes, show the late prompt
             bell.addEventListener('ended', showLatePrompt, {once: true});
-          }).catch(() => {
-            // If bell play fails, show prompt immediately
-            showLatePrompt();
+          }).catch(e => {
+            console.log('Bell audio failed to play:', e);
+            bellNote.style.display='block';
+            // If bell fails, show prompt after a short delay
+            setTimeout(showLatePrompt, 1000);
           });
+        } else {
+          // If no promise returned, show prompt after delay
+          setTimeout(showLatePrompt, 1000);
         }
+      }
+
+      // FIXED: Start narration automatically when page loads
+      window.addEventListener('load', function() {
+        console.log('Page loaded, starting narration');
+        setTimeout(function() {
+          const playPromise = audio.play();
+          if (playPromise) {
+            playPromise.catch(e => {
+              console.log('Narration auto-play failed:', e);
+              // If auto-play fails, show instructions
+              showError('Click anywhere to start narration');
+              document.addEventListener('click', function startOnClick() {
+                audio.play();
+                document.removeEventListener('click', startOnClick);
+              }, {once: true});
+            });
+          }
+        }, 1000);
       });
+
+      // When narration ends, play bell and then show late prompt
+      audio.addEventListener('ended', ()=>{
+        console.log('Narration ended - playing school bell');
+        playBellAndShowPrompt();
+      });
+
+      // FIXED: Add manual trigger for testing
+      window.__triggerEndScene = function() {
+        console.log('MANUALLY triggering end scene');
+        playBellAndShowPrompt();
+      };
     })();
 
     /* ---------- Materials + centering ---------- */
@@ -439,7 +472,7 @@
         fixMaterials(root);
       }
       if(scene.renderer){ scene.renderer.setClearColor(0x000000,1); }
-      else{ scene.addEventListener('render-target-loaded',()=>{ try{ scene.renderer.setClearColor(0x000000,1);}catch(_){}}); }
+      else{ scene.addEventListener('render-target-loaded',()=>{ try{ scene.renderer.setClearColor(0x000000,1);}catch(_){} }); }
 
       modelEl.addEventListener('model-loaded',()=>{ try{ const obj=modelEl.getObject3D('mesh'); if(!obj){ showError('Model loaded, no mesh.'); return; } centerAndScale(obj); }catch(err){ showError(err.message); } });
       modelEl.addEventListener('model-error',()=>{ showError('Failed to load assets/models/Lung.glb'); });
