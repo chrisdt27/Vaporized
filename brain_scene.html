@@ -6,25 +6,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
-    html, body { margin:0; height:100%; background:#fff; font-family:system-ui,Segoe UI,Arial }
+    html, body { margin:0; height:100%; background:#000; font-family:system-ui,Segoe UI,Arial; overflow: hidden; }
     .whiteboard{
       position:fixed; left:12px; top:18px; width:420px; max-width:40vw; z-index:1200;
-      background:#f8fbff; border:2px solid #dbe7ff; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.10);
-      padding:14px 16px;
+      background:rgba(248, 251, 255, 0.95); border:2px solid #dbe7ff; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.30);
+      padding:14px 16px; backdrop-filter: blur(10px);
     }
     .whiteboard h2{ margin:0 0 10px 0; font-size:20px; color:#0f172a }
     .answers{ display:grid; gap:6px }
-    .ans{ background:#ffffff; border:1px solid #d7e3ff; border-radius:10px; padding:10px 12px; color:#0b1a33; cursor:pointer; }
+    .ans{ background:#ffffff; border:1px solid #d7e3ff; border-radius:10px; padding:10px 12px; color:#0b1a33; cursor:pointer; transition: all 0.2s ease; }
+    .ans:hover { background:#f0f7ff; transform: translateY(-1px); }
     .ans strong{ margin-right:6px }
     .ans.active{ border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.25) inset; background:#f0f7ff }
     .ans.recording{ border-color:#ef4444; box-shadow:0 0 0 2px rgba(239,68,68,.25) inset; background:#fef2f2 }
     .ans.done{ opacity:.85 }
     .callout-box{
       position:fixed; right:12px; top:18px; z-index:1100; width:360px; max-width:32vw;
-      background:#111; color:#fff; border-radius:12px; border:1px solid #333; padding:14px 16px; display:none;
-      box-shadow:0 8px 28px rgba(0,0,0,.25); text-align:left;
+      background:rgba(17, 17, 17, 0.95); color:#fff; border-radius:12px; border:1px solid #333; padding:14px 16px; display:none;
+      box-shadow:0 8px 28px rgba(0,0,0,.45); text-align:left; backdrop-filter: blur(10px);
     }
-    .callout-box h3{ margin:0 0 6px 0; font-size:18px }
+    .callout-box h3{ margin:0 0 6px 0; font-size:18px; color:#ffd700 }
     .callout-box p{ margin:0; line-height:1.35; color:#cfd8e3 }
     #leaderOverlay{ position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:1099; pointer-events:none; display:none; }
     .cta{position:fixed; left:50%; transform:translateX(-50%); bottom:28px; z-index:1200; display:none;}
@@ -32,31 +33,31 @@
     .cta button:hover{background:#182242}
     #statusDot{ position:fixed; right:12px; bottom:12px; z-index:1200; width:10px; height:10px; border-radius:50%; background:#2aa54a; border:1px solid #511; }
     
-    /* Recording UI */
-    .recording-ui{
-      position:fixed; right:12px; bottom:40px; z-index:1300; background:rgba(255,255,255,0.95);
-      border:2px solid #3b82f6; border-radius:10px; padding:12px; display:none;
+    /* VR Controls Help */
+    .vr-controls-help{
+      position:fixed; left:50%; transform:translateX(-50%); bottom:20px; z-index:1200; 
+      background:rgba(0,0,0,0.8); border:1px solid #444; border-radius:10px; padding:12px 16px;
+      font-size:14px; color:#fff; text-align:center; backdrop-filter: blur(10px);
     }
-    .recording-ui h4{ margin:0 0 8px 0; color:#0f172a }
-    .recording-ui button{ margin:2px; padding:6px 10px; border:1px solid #ccc; border-radius:6px; background:#f8f9fa; cursor:pointer }
-    .recording-ui button:hover{ background:#e9ecef }
-    
-    /* Instructions */
-    .instructions{
-      position:fixed; left:50%; transform:translateX(-50%); top:20px; z-index:1200; 
-      background:#fffbeb; border:2px solid #f59e0b; border-radius:10px; padding:10px 14px; display:none;
-    }
-
-    /* Controls Help */
-    .controls-help{
-      position:fixed; left:12px; bottom:12px; z-index:1200; 
-      background:rgba(255,255,255,0.9); border:1px solid #d7dee7; border-radius:8px; padding:8px 10px;
-      font-size:12px; color:#334155;
-    }
+    .vr-controls-help strong{ color:#ffd700; display:block; margin-bottom:4px; }
     
     /* Fade transition */
     .fade-out{ animation:fade 0.9s forwards }
     @keyframes fade { to { opacity:0; transform:scale(.96) } }
+
+    /* 3D Navigation Hints */
+    .nav-hint {
+      position: fixed;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      z-index: 1200;
+      display: none;
+    }
+    #hint-rotate { top: 20px; right: 20px; }
+    #hint-zoom { bottom: 80px; left: 20px; }
   </style>
 </head>
 <body>
@@ -77,136 +78,158 @@
 </div>
 
 <svg id="leaderOverlay">
-  <line id="leader" x1="0" y1="0" x2="0" y2="0" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
-  <circle id="leaderDot" cx="0" cy="0" r="5" fill="#d91525" stroke="#600" stroke-width="1.5" />
+  <line id="leader" x1="0" y1="0" x2="0" y2="0" stroke="#ffd700" stroke-width="3" stroke-linecap="round" stroke-dasharray="8,4"/>
+  <circle id="leaderDot" cx="0" cy="0" r="6" fill="#ff4444" stroke="#800" stroke-width="2" />
 </svg>
 
 <div id="statusDot"></div>
 
-<!-- Controls Help -->
-<div class="controls-help">
-  <strong>Controls:</strong> Arrow Keys = Rotate • Mouse Wheel = Zoom
+<!-- VR Controls Help -->
+<div class="vr-controls-help" id="vrControls">
+  <strong>VR Controls</strong>
+  <div>Grip: Rotate Brain • Trigger: Zoom • A/X: Next Scene</div>
 </div>
 
-<!-- Instructions -->
-<div class="instructions" id="instructions">
-  <strong>Recording Mode:</strong> Click on the brain to place the red dot, then click "Save Position"
-</div>
-
-<!-- Recording Controls -->
-<div class="recording-ui" id="recordingUI">
-  <h4>📹 Recording: <span id="currentAnswer">A</span></h4>
-  <button id="saveBtn">Save Position</button>
-  <button id="cancelBtn">Cancel</button>
-  <button id="exportBtn">Export All Data</button>
-  <button id="clearBtn">Clear All</button>
-</div>
+<!-- Navigation Hints -->
+<div class="nav-hint" id="hint-rotate">Drag to Rotate • Scroll to Zoom</div>
 
 <div class="cta" id="ctaBox"><button id="ctaBtn">Continue to Next Scene</button></div>
 
 <a-scene 
   renderer="antialias:true; physicallyCorrectLights:true; colorManagement:true; toneMapping:ACESFilmic;"
-  background="color:#fff" 
+  background="color:#000" 
   shadow="type: pcfsoft" 
-  vr-mode-ui="enabled:true">
+  vr-mode-ui="enabled:true"
+  cursor="rayOrigin: mouse"
+  raycaster="objects: .clickable">
   
   <a-assets timeout="60000">
     <a-asset-item id="brainModel" src="./assets/models/Brain.glb"></a-asset-item>
+    <audio id="clickSound" src="./assets/audio/click.mp3" preload="auto"></audio>
   </a-assets>
 
-  <a-sky color="#fff"></a-sky>
+  <!-- Space Environment -->
+  <a-sky color="#0a0a1f"></a-sky>
+  
+  <!-- Floating particles for depth -->
+  <a-entity id="particles"></a-entity>
 
   <a-entity id="rig" position="0 1.6 0">
-    <a-entity id="cam" camera></a-entity>
+    <a-entity id="cam" camera="fov: 80" look-controls="pointerLockEnabled: true"></a-entity>
   </a-entity>
 
-  <a-entity light="type: ambient; intensity: 0.5; color:#ffffff"></a-entity>
-  <a-entity light="type: directional; intensity: 1.2; color:#ffffff" position="2 3 2" shadow="cast:true"></a-entity>
-  <a-entity light="type: directional; intensity: 0.9; color:#ffffff" position="-2 2 -2"></a-entity>
-  <a-entity light="type: directional; intensity: 0.8; color:#ffffff" position="-3 3 3"></a-entity>
+  <!-- Enhanced Lighting -->
+  <a-entity light="type: ambient; intensity: 0.4; color:#1a237e"></a-entity>
+  <a-entity light="type: directional; intensity: 1.0; color:#ffffff" position="3 5 3" shadow="cast:true; shadowMapSize: 1024"></a-entity>
+  <a-entity light="type: point; intensity: 0.8; color:#4fc3f7" position="-2 3 -1" distance="8"></a-entity>
+  <a-entity light="type: point; intensity: 0.6; color:#ff4081" position="2 2 2" distance="6"></a-entity>
 
-  <a-circle id="shadow" position="0 0.2 -2" rotation="-90 0 0" radius="0.6" color="#000" opacity="0.10"></a-circle>
+  <!-- Interactive Brain with better physics -->
+  <a-entity id="brain-rig" position="0 1.2 -3">
+    <a-entity id="brain" 
+              gltf-model="#brainModel" 
+              position="0 0 0" 
+              rotation="0 0 0" 
+              scale="1.2 1.2 1.2" 
+              shadow="cast:true; receive:true"
+              class="clickable"
+              animation__rotate="property: rotation; to: 0 360 0; loop: true; dur: 40000; easing: linear; pauseEvents: mouseenter">
+    </a-entity>
+  </a-entity>
 
   <!-- Visual indicator for placed dot -->
-  <a-sphere id="placementDot" radius="0.02" color="#ff0000" visible="false" position="0 0 0"></a-sphere>
-
-  <!-- Brain -->
-  <a-entity id="brain" gltf-model="#brainModel" position="0 1 -2" rotation="0 0 0" scale="1 1 1" shadow="cast:true"></a-entity>
-  
-  <!-- Fallback brain (hidden by default) -->
-  <a-entity id="fallbackBrain" visible="false">
-    <a-sphere color="#ffb6c1" radius="0.5" position="0 1 -2"></a-sphere>
+  <a-entity id="placement-dot" visible="false">
+    <a-sphere radius="0.03" color="#ff4444" emissive="#ff0000" emissiveIntensity="0.5"></a-sphere>
+    <a-ring radius="0.05" color="#ff4444" opacity="0.3" rotation="-90 0 0"></a-ring>
   </a-entity>
-  
-  <a-entity id="mouse" cursor="rayOrigin: mouse" raycaster="objects: #brain, #fallbackBrain"></a-entity>
+
+  <!-- VR Controllers -->
+  <a-entity laser-controls="hand: right" raycaster="objects: .clickable"></a-entity>
+  <a-entity laser-controls="hand: left" raycaster="objects: .clickable"></a-entity>
+
+  <!-- Floating info panels that appear in VR -->
+  <a-entity id="vr-info" position="0 2.5 -2" visible="false">
+    <a-text value="Look at different brain areas" color="#ffd700" align="center" position="0 0.3 0"></a-text>
+    <a-plane color="#000" opacity="0.8" width="1.8" height="0.8" position="0 0 0"></a-plane>
+  </a-entity>
 </a-scene>
 
 <script>
-// Clean automatic initialization - no loading screens or debug panels
+// Enhanced 3D Brain Experience
 (function() {
   'use strict';
   
-  // Track initialization state to prevent multiple runs
   let sceneInitialized = false;
-  
-  // DOM Elements
   const brain = document.getElementById('brain');
   const scene = document.querySelector('a-scene');
-  const fallbackBrain = document.getElementById('fallbackBrain');
+  const brainRig = document.getElementById('brain-rig');
   
-  // Enhanced model loading with silent fallbacks
-  let modelAttempts = 0;
-  const modelPaths = [
-    './assets/models/Brain.glb',
-    '../assets/models/Brain.glb', 
-    'assets/models/Brain.glb',
-    './assets/models/brain.glb'
-  ];
+  // Auto-rotate brain slowly when not interacting
+  let autoRotate = true;
+  let isInteracting = false;
 
   function tryLoadModel() {
-    if (modelAttempts >= modelPaths.length) {
-      // Silently switch to fallback brain
-      brain.setAttribute('visible', 'false');
-      fallbackBrain.setAttribute('visible', 'true');
-      initializeApplication();
-      return;
+    const modelPaths = [
+      './assets/models/Brain.glb',
+      '../assets/models/Brain.glb', 
+      'assets/models/Brain.glb',
+      './assets/models/brain.glb'
+    ];
+
+    let attempts = 0;
+    
+    function attemptLoad() {
+      if (attempts >= modelPaths.length) {
+        createFallbackBrain();
+        return;
+      }
+      
+      brain.setAttribute('gltf-model', modelPaths[attempts]);
+      attempts++;
     }
 
-    const currentPath = modelPaths[modelAttempts];
-    brain.setAttribute('gltf-model', currentPath);
-    modelAttempts++;
+    brain.addEventListener('model-loaded', function() {
+      if (sceneInitialized) return;
+      
+      const mesh = brain.getObject3D('mesh');
+      if (mesh) {
+        mesh.traverse(function(node) {
+          if (node.isMesh && node.material) {
+            // Enhanced brain materials for VR
+            if (node.material.color) {
+              node.material.color.set('#ff6b9d');
+            }
+            node.material.emissive = new THREE.Color(0x331122);
+            node.material.emissiveIntensity = 0.1;
+            if ('metalness' in node.material) node.material.metalness = 0.3;
+            if ('roughness' in node.material) node.material.roughness = 0.4;
+            node.material.needsUpdate = true;
+          }
+        });
+      }
+      sceneInitialized = true;
+      initializeApplication();
+    });
+
+    brain.addEventListener('model-error', function() {
+      setTimeout(attemptLoad, 500);
+    });
+
+    attemptLoad();
   }
 
-  brain.addEventListener('model-loaded', function() {
-    if (sceneInitialized) return; // Prevent multiple initializations
-    
-    // Process the loaded model silently
-    const mesh = brain.getObject3D('mesh');
-    if (mesh) {
-      mesh.traverse(function(node) {
-        if (node.isMesh && node.material) {
-          if (node.material.color) {
-            node.material.color.set('#ffb6c1');
-          }
-          if ('metalness' in node.material) node.material.metalness = 0.1;
-          if ('roughness' in node.material) node.material.roughness = 0.45;
-        }
-      });
-    }
+  function createFallbackBrain() {
+    // Create a more interesting fallback brain
+    brain.innerHTML = '';
+    brain.setAttribute('geometry', 'primitive: sphere; radius: 0.5');
+    brain.setAttribute('material', 'color: #ff6b9d; metalness: 0.3; roughness: 0.4; emissive: #331122; emissiveIntensity: 0.1');
     sceneInitialized = true;
     initializeApplication();
-  });
+  }
 
-  brain.addEventListener('model-error', function() {
-    if (sceneInitialized) return; // Prevent multiple initializations
-    // Silently try next path
-    setTimeout(tryLoadModel, 500);
-  });
-
-  // Start loading immediately
+  // Start loading
   tryLoadModel();
 
-  // Single fallback: initialize only once after 3 seconds
   setTimeout(function() {
     if (!sceneInitialized) {
       sceneInitialized = true;
@@ -216,14 +239,13 @@
 
 })();
 
-// Main application initialization
 function initializeApplication() {
   'use strict';
   
-  // Prevent multiple initializations
   if (window.brainAppInitialized) return;
   window.brainAppInitialized = true;
   
+  // DOM Elements
   const call = document.getElementById('callout');
   const title = document.getElementById('callTitle');
   const body = document.getElementById('callBody');
@@ -233,170 +255,172 @@ function initializeApplication() {
   const ctaBox = document.getElementById('ctaBox');
   const ctaBtn = document.getElementById('ctaBtn');
   const wbA = document.getElementById('wbA'), wbB = document.getElementById('wbB'), wbC = document.getElementById('wbC'), wbD = document.getElementById('wbD');
-  const recordingUI = document.getElementById('recordingUI');
-  const placementDot = document.getElementById('placementDot');
-  const instructions = document.getElementById('instructions');
-  const currentAnswerSpan = document.getElementById('currentAnswer');
-  const saveBtn = document.getElementById('saveBtn');
-  const cancelBtn = document.getElementById('cancelBtn');
+  const placementDot = document.getElementById('placement-dot');
+  const brainRig = document.getElementById('brain-rig');
   const brain = document.getElementById('brain');
-  const fallbackBrain = document.getElementById('fallbackBrain');
   const scene = document.querySelector('a-scene');
+  const vrControls = document.getElementById('vrControls');
+  const vrInfo = document.getElementById('vr-info');
 
-  // Brain Movement Controls
-  let yaw = 0, pitch = 0, zoomZ = -2;
-  const Z_MIN = -3.0, Z_MAX = -0.8;
+  // Enhanced 3D Controls
+  let isRotating = false;
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+  let brainRotation = { x: 0, y: 0 };
+  let brainScale = 1;
+  const SCALE_MIN = 0.5;
+  const SCALE_MAX = 2.0;
 
-  function applyBrainTransform() {
-    const targetBrain = brain.getAttribute('visible') === 'true' ? brain : fallbackBrain;
-    if (targetBrain.object3D) {
-      // Convert degrees to radians for Three.js rotation
-      targetBrain.object3D.rotation.set(
-        THREE.MathUtils.degToRad(pitch), 
-        THREE.MathUtils.degToRad(yaw), 
-        0
-      );
-      targetBrain.object3D.position.set(0, 1, zoomZ);
-      
-      // Force update the matrix to ensure changes are applied
-      targetBrain.object3D.updateMatrix();
-    }
+  // Mouse/Touch Controls for 3D Interaction
+  scene.addEventListener('mousedown', startRotation);
+  scene.addEventListener('touchstart', startRotation);
+  
+  function startRotation(e) {
+    isRotating = true;
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    
+    lastMouseX = clientX;
+    lastMouseY = clientY;
+    
+    // Stop auto-rotation during interaction
+    brain.removeAttribute('animation__rotate');
+    
+    document.addEventListener('mousemove', rotateBrain);
+    document.addEventListener('touchmove', rotateBrain);
+    document.addEventListener('mouseup', stopRotation);
+    document.addEventListener('touchend', stopRotation);
   }
 
-  // Enhanced keyboard controls for rotation
-  window.addEventListener('keydown', (e) => {
-    // Prevent default behavior for arrow keys to avoid page scrolling
-    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-      e.preventDefault();
-    }
+  function rotateBrain(e) {
+    if (!isRotating) return;
     
-    if (e.key === 'ArrowLeft') { 
-      yaw -= 8; // Increased rotation speed for better control
-      applyBrainTransform(); 
-    }
-    if (e.key === 'ArrowRight') { 
-      yaw += 8; 
-      applyBrainTransform(); 
-    }
-    if (e.key === 'ArrowUp') { 
-      pitch -= 8; 
-      applyBrainTransform(); 
-    }
-    if (e.key === 'ArrowDown') { 
-      pitch += 8; 
-      applyBrainTransform(); 
-    }
-  });
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    
+    const deltaX = clientX - lastMouseX;
+    const deltaY = clientY - lastMouseY;
+    
+    brainRotation.y += deltaX * 0.5;
+    brainRotation.x += deltaY * 0.5;
+    
+    // Limit vertical rotation
+    brainRotation.x = Math.max(-90, Math.min(90, brainRotation.x));
+    
+    brainRig.object3D.rotation.set(
+      THREE.MathUtils.degToRad(brainRotation.x),
+      THREE.MathUtils.degToRad(brainRotation.y),
+      0
+    );
+    
+    lastMouseX = clientX;
+    lastMouseY = clientY;
+  }
 
-  // Enhanced mouse wheel for zoom
+  function stopRotation() {
+    isRotating = false;
+    document.removeEventListener('mousemove', rotateBrain);
+    document.removeEventListener('touchmove', rotateBrain);
+    
+    // Restart auto-rotation after a delay
+    setTimeout(() => {
+      if (!isRotating) {
+        brain.setAttribute('animation__rotate', {
+          property: 'rotation',
+          to: `0 ${brainRotation.y + 360} 0`,
+          dur: 40000,
+          easing: 'linear'
+        });
+      }
+    }, 2000);
+  }
+
+  // Enhanced Zoom with Scroll
   window.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const dz = e.deltaY > 0 ? -0.25 : 0.25; // Increased zoom speed
-    zoomZ = Math.max(Z_MIN, Math.min(Z_MAX, zoomZ + dz));
-    applyBrainTransform();
-  }, { passive: false }); // Changed to non-passive to allow preventDefault
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    brainScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, brainScale * zoomFactor));
+    
+    brainRig.object3D.scale.set(brainScale, brainScale, brainScale);
+  }, { passive: false });
 
-  // Apply initial transform
-  applyBrainTransform();
+  // VR Controller Support
+  scene.addEventListener('enter-vr', function() {
+    vrControls.style.display = 'block';
+    vrInfo.setAttribute('visible', 'true');
+    
+    // Enhance VR experience
+    brain.setAttribute('scale', '1.5 1.5 1.5');
+  });
 
-  // Recording Mode - ENABLE ON VERCEl
-  const DEV = true; // Force enable recording mode on Vercel
-  if (DEV) {
-    recordingUI.style.display = 'block';
-  }
+  scene.addEventListener('exit-vr', function() {
+    vrControls.style.display = 'none';
+    vrInfo.setAttribute('visible', 'false');
+    brain.setAttribute('scale', '1.2 1.2 1.2');
+  });
 
-  let currentRecordingAnswer = null;
-  let currentDotPosition = null;
-  let animRAF = null;
-
-  // Answer data with pre-configured positions for Vercel
+  // Answer data with enhanced 3D positions
   const answerData = {
     A: {
       title: 'Prefrontal Cortex — Attention & Control',
-      body: 'Nicotine disrupts executive control, degrading sustained attention and focus.',
+      body: 'Nicotine disrupts executive control in the prefrontal cortex, degrading sustained attention and focus.',
       narration: "./assets/audio/vo/vo_A.mp3",
-      // Pre-configured position for Vercel
-      preconfigured: { yaw: 0, pitch: 0, zoomZ: -2, dot: [0.2, 0.3, -0.1] }
+      position: { x: 0.3, y: 0.4, z: 0.2 },
+      view: { rotationX: 20, rotationY: 30, scale: 1.3 }
     },
     B: {
       title: 'Hippocampus — Learning & Memory',
       body: 'Repeated nicotine exposure impairs hippocampal plasticity, affecting learning and memory formation.',
-      narration: "./assets/audio/vo/vo_B.mp3",
-      preconfigured: { yaw: 45, pitch: 10, zoomZ: -1.8, dot: [-0.1, 0.2, 0.15] }
+      narration: "./assets/audio/vo/vo_B.mp3", 
+      position: { x: -0.2, y: 0.1, z: 0.3 },
+      view: { rotationX: -10, rotationY: -20, scale: 1.4 }
     },
     C: {
       title: 'Nucleus Accumbens — Reward & Addiction',
-      body: 'Nicotine drives dopamine surges in reward pathways, increasing addiction vulnerability.',
+      body: 'Nicotine drives dopamine surges in reward pathways, significantly increasing addiction vulnerability.',
       narration: "./assets/audio/vo/vo_C.mp3",
-      preconfigured: { yaw: -30, pitch: -5, zoomZ: -2.2, dot: [0.15, -0.1, 0.2] }
+      position: { x: 0.1, y: -0.2, z: 0.4 },
+      view: { rotationX: 15, rotationY: 45, scale: 1.5 }
     },
     D: {
       title: 'Amygdala — Mood & Anxiety',
-      body: 'Withdrawal and nicotine effects on amygdala contribute to mood instability and anxiety.',
+      body: 'Withdrawal and nicotine effects on amygdala contribute to mood instability and heightened anxiety.',
       narration: "./assets/audio/vo/vo_D.mp3",
-      preconfigured: { yaw: 90, pitch: 15, zoomZ: -1.5, dot: [-0.2, 0.1, -0.15] }
+      position: { x: -0.3, y: 0.2, z: -0.1 },
+      view: { rotationX: -5, rotationY: -40, scale: 1.6 }
     }
   };
 
-  // Click on answer buttons to start recording OR play scene
-  function handleAnswerClick(answer) {
-    if (DEV) {
-      startRecording(answer);
-    } else {
-      // In production, play the scene immediately
-      playScene(answer);
-    }
-  }
-
-  function startRecording(answer) {
-    if (!DEV) return;
-    
-    currentRecordingAnswer = answer;
-    currentAnswerSpan.textContent = answer;
-    
-    instructions.style.display = 'block';
-    instructions.innerHTML = `<strong>Recording ${answer}:</strong> Use Arrow Keys to rotate, Mouse Wheel to zoom. Click on the brain to place the red dot, then click "Save Position"`;
-    
-    [wbA, wbB, wbC, wbD].forEach(el => el.classList.remove('active', 'recording'));
-    document.getElementById(`wb${answer}`).classList.add('recording');
-    
-    title.textContent = answerData[answer].title;
-    body.textContent = answerData[answer].body;
-    call.style.display = 'block';
-    
-    placementDot.setAttribute('visible', 'false');
-    currentDotPosition = null;
-    
-    // Reset brain position for recording
-    yaw = 0;
-    pitch = 0;
-    zoomZ = -2;
-    applyBrainTransform();
-  }
-
-  // Click on brain to place dot
-  function handleBrainClick(ev) {
-    if (!DEV || !currentRecordingAnswer) return;
-    
+  // Enhanced click handling for brain
+  brain.addEventListener('click', function(ev) {
     if (ev.detail && ev.detail.intersection) {
-      const intersectionPoint = ev.detail.intersection.point.clone();
+      const point = ev.detail.intersection.point;
       
-      placementDot.object3D.position.copy(intersectionPoint);
+      // Place the dot with visual feedback
+      placementDot.object3D.position.copy(point);
       placementDot.setAttribute('visible', 'true');
       
-      const targetBrain = brain.getAttribute('visible') === 'true' ? brain : fallbackBrain;
-      const localPosition = targetBrain.object3D.worldToLocal(intersectionPoint.clone());
-      currentDotPosition = [localPosition.x, localPosition.y, localPosition.z];
+      // Add animation
+      placementDot.setAttribute('animation', {
+        property: 'scale',
+        from: '0 0 0',
+        to: '1 1 1',
+        dur: 300,
+        easing: 'easeOutElastic'
+      });
       
-      showLeaderLine(intersectionPoint);
+      // Show leader line to callout
+      showLeaderLine(point);
+      
+      // Play click sound if available
+      const clickSound = document.getElementById('clickSound');
+      if (clickSound) {
+        clickSound.currentTime = 0;
+        clickSound.play().catch(() => {});
+      }
     }
-  }
+  });
 
-  // Add click listeners
-  brain.addEventListener('click', handleBrainClick);
-  fallbackBrain.addEventListener('click', handleBrainClick);
-
-  // Show leader line
   function showLeaderLine(worldPosition) {
     function drawLeader() {
       const p = projectToScreen(worldPosition);
@@ -408,262 +432,104 @@ function initializeApplication() {
         line.setAttribute('y2', p.y);
         dot2D.setAttribute('cx', p.x); 
         dot2D.setAttribute('cy', p.y);
-        animRAF = requestAnimationFrame(drawLeader);
+        requestAnimationFrame(drawLeader);
       }
     }
     
-    if (animRAF) cancelAnimationFrame(animRAF);
-    if (svg) svg.style.display = 'block';
-    animRAF = requestAnimationFrame(drawLeader);
+    svg.style.display = 'block';
+    drawLeader();
   }
 
-  // Save position
-  function saveCurrentPosition() {
-    if (!currentRecordingAnswer || !currentDotPosition) {
-      alert('Please click on the brain to place a red dot first!');
-      return;
-    }
-    
-    scenes[currentRecordingAnswer] = {
-      yaw: yaw,
-      pitch: pitch,
-      zoomZ: zoomZ,
-      dot: currentDotPosition,
-      title: answerData[currentRecordingAnswer].title,
-      body: answerData[currentRecordingAnswer].body,
-      narration: answerData[currentRecordingAnswer].narration
-    };
-    
-    saveScenes(scenes);
-    
-    document.getElementById(`wb${currentRecordingAnswer}`).classList.remove('recording');
-    document.getElementById(`wb${currentRecordingAnswer}`).classList.add('done');
-    
-    instructions.style.display = 'none';
-    call.style.display = 'none';
-    if (svg) svg.style.display = 'none';
-    placementDot.setAttribute('visible', 'false');
-    
-    if (animRAF) {
-      cancelAnimationFrame(animRAF);
-      animRAF = null;
-    }
-    
-    alert(`Position saved for answer ${currentRecordingAnswer}!`);
-    currentRecordingAnswer = null;
-    currentDotPosition = null;
-  }
-
-  // Cancel recording
-  function cancelRecording() {
-    instructions.style.display = 'none';
-    call.style.display = 'none';
-    if (svg) svg.style.display = 'none';
-    placementDot.setAttribute('visible', 'false');
-    
-    if (animRAF) {
-      cancelAnimationFrame(animRAF);
-      animRAF = null;
-    }
-    
-    [wbA, wbB, wbC, wbD].forEach(el => el.classList.remove('recording'));
-    currentRecordingAnswer = null;
-    currentDotPosition = null;
-  }
-
-  // Wire up buttons
-  wbA.addEventListener('click', () => handleAnswerClick('A'));
-  wbB.addEventListener('click', () => handleAnswerClick('B'));
-  wbC.addEventListener('click', () => handleAnswerClick('C'));
-  wbD.addEventListener('click', () => handleAnswerClick('D'));
-
-  saveBtn.addEventListener('click', saveCurrentPosition);
-  cancelBtn.addEventListener('click', cancelRecording);
-
-  document.getElementById('exportBtn').addEventListener('click', () => {
-    const data = JSON.stringify(scenes, null, 2);
-    navigator.clipboard.writeText(data);
-    alert('Scene data copied to clipboard!');
-  });
-
-  document.getElementById('clearBtn').addEventListener('click', () => {
-    if (confirm('Clear all saved positions?')) {
-      scenes = {A: null, B: null, C: null, D: null};
-      clearScenes();
-      placementDot.setAttribute('visible', 'false');
-      currentDotPosition = null;
-      [wbA, wbB, wbC, wbD].forEach(el => el.classList.remove('active', 'recording', 'done'));
-      alert('All positions cleared.');
-    }
-  });
-
-  // Auto-Play System
-  let driftRAF = null;
-  let zoomAnimRAF = null;
-  let currentAudio = null; // Track current audio to prevent overlaps
-
-  function startMicroDrift() {
-    const startYaw = yaw, startPitch = pitch;
-    const t0 = performance.now();
-    function loop() {
-      const t = (performance.now() - t0) / 1000;
-      yaw = startYaw + Math.sin(t * 1.6) * 0.2 + t * 0.1;
-      pitch = startPitch + Math.sin(t * 1.2) * 0.15;
-      applyBrainTransform();
-      driftRAF = requestAnimationFrame(loop);
-    }
-    stopMicroDrift();
-    driftRAF = requestAnimationFrame(loop);
-  }
-
-  function stopMicroDrift() {
-    if (driftRAF) { cancelAnimationFrame(driftRAF); driftRAF = null; }
-  }
-
-  function easeZoom(toZ, dur = 1200) {
-    if (zoomAnimRAF) { cancelAnimationFrame(zoomAnimRAF); zoomAnimRAF = null; }
-    const fromZ = zoomZ;
-    const dz = toZ - fromZ;
-    const t0 = performance.now();
-    return new Promise((resolve) => {
-      function step() {
-        const t = performance.now() - t0;
-        const k = Math.min(1, t / dur);
-        const e = k * k * (3 - 2 * k);
-        zoomZ = fromZ + dz * e;
-        applyBrainTransform();
-        if (k < 1) { zoomAnimRAF = requestAnimationFrame(step); } else { zoomAnimRAF = null; resolve(); }
-      }
-      zoomAnimRAF = requestAnimationFrame(step);
-    });
-  }
-
-  function startLeaderWorld(worldVec) {
-    function tick() { 
-      drawLeaderToWorld(worldVec); 
-      animRAF = requestAnimationFrame(tick); 
-    }
-    if (animRAF) cancelAnimationFrame(animRAF);
-    animRAF = requestAnimationFrame(tick);
-  }
-
-  function drawLeaderToWorld(worldVec) {
-    const p = projectToScreen(worldVec);
-    const a = panelAnchor2D();
-    if (line && dot2D) {
-      line.setAttribute('x1', a.x); 
-      line.setAttribute('y1', a.y);
-      line.setAttribute('x2', p.x); 
-      line.setAttribute('y2', p.y);
-      dot2D.setAttribute('cx', p.x); 
-      dot2D.setAttribute('cy', p.y);
-    }
-  }
-
+  // Auto-play sequence with enhanced 3D animations
   function playScene(id) {
     return new Promise((resolve) => {
-      // Stop any currently playing audio
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio = null;
-      }
+      const data = answerData[id];
+      if (!data) return resolve(0);
       
-      const S = scenes[id] || answerData[id].preconfigured;
-      if (!S) { 
-        return resolve(0); 
-      }
-      
-      yaw = S.yaw; 
-      pitch = S.pitch; 
-      zoomZ = S.zoomZ; 
-      applyBrainTransform();
-      
-      setActiveWB(id);
-      title.textContent = S.title; 
-      body.textContent = S.body;
-      call.style.display = 'block'; 
-      if (svg) svg.style.display = 'block';
-      
-      const targetBrain = brain.getAttribute('visible') === 'true' ? brain : fallbackBrain;
-      const worldPos = targetBrain.object3D.localToWorld(new THREE.Vector3(...S.dot));
-      startLeaderWorld(worldPos);
-      
-      const zoomIn = Math.min(S.zoomZ + 0.25, Z_MAX);
-      currentAudio = new Audio(S.narration);
-      
-      currentAudio.onended = async () => {
-        await easeZoom(S.zoomZ, 800);
-        stopMicroDrift();
-        currentAudio = null;
-        resolve(currentAudio ? currentAudio.duration : 0);
-      };
-      
-      currentAudio.onerror = async () => {
-        await easeZoom(S.zoomZ, 600);
-        stopMicroDrift();
-        currentAudio = null;
-        resolve(0);
-      };
-      
-      startMicroDrift();
-      easeZoom(zoomIn, 1000).then(() => {});
-      
-      currentAudio.play().catch(() => {
-        setTimeout(async () => {
-          await easeZoom(S.zoomZ, 600);
-          stopMicroDrift();
-          currentAudio = null;
-          resolve(0);
-        }, 1200);
+      // Animate to the target view
+      animateToView(data.view, data.position).then(() => {
+        setActiveWB(id);
+        title.textContent = data.title;
+        body.textContent = data.body;
+        call.style.display = 'block';
+        
+        // Convert local position to world position for the dot
+        const worldPos = brain.object3D.localToWorld(
+          new THREE.Vector3(data.position.x, data.position.y, data.position.z)
+        );
+        showLeaderLine(worldPos);
+        
+        // Play narration
+        const audio = new Audio(data.narration);
+        audio.onended = () => resolve(audio.duration);
+        audio.onerror = () => resolve(0);
+        audio.play().catch(() => resolve(0));
       });
     });
   }
 
-  // Auto-run sequence - runs with preconfigured positions
-  let autoRunStarted = false;
-  
-  function autoRunSequence() {
-    if (autoRunStarted) return;
-    autoRunStarted = true;
-    
-    const availableScenes = Object.keys(answerData);
-    
-    if (availableScenes.length === 0) return;
-    
-    (async function() {
-      for (let i = 0; i < availableScenes.length; i++) {
-        const sceneId = availableScenes[i];
-        try {
-          await playScene(sceneId);
-          await new Promise(r => setTimeout(r, 1000));
-        } catch (error) {
-          // Silent fail
-        }
-      }
-      if (ctaBox) ctaBox.style.display = 'block';
-    })();
+  function animateToView(view, dotPosition) {
+    return new Promise((resolve) => {
+      const targetRotation = {
+        x: THREE.MathUtils.degToRad(view.rotationX || 0),
+        y: THREE.MathUtils.degToRad(view.rotationY || 0),
+        z: 0
+      };
+      
+      const targetScale = view.scale || 1;
+      
+      // Animate rotation and scale
+      brainRig.setAttribute('animation', {
+        property: 'rotation',
+        to: `${targetRotation.x} ${targetRotation.y} ${targetRotation.z}`,
+        dur: 1500,
+        easing: 'easeInOutQuad'
+      });
+      
+      brainRig.setAttribute('animation__scale', {
+        property: 'scale',
+        to: `${targetScale} ${targetScale} ${targetScale}`,
+        dur: 1500,
+        easing: 'easeInOutQuad'
+      });
+      
+      // Place dot at target position
+      placementDot.object3D.position.copy(
+        brain.object3D.localToWorld(
+          new THREE.Vector3(dotPosition.x, dotPosition.y, dotPosition.z)
+        )
+      );
+      placementDot.setAttribute('visible', 'true');
+      
+      setTimeout(resolve, 1600);
+    });
   }
+
+  // Auto-run the experience
+  setTimeout(() => {
+    const sceneOrder = ['A', 'B', 'C', 'D'];
+    let currentScene = 0;
+    
+    function playNextScene() {
+      if (currentScene >= sceneOrder.length) {
+        ctaBox.style.display = 'block';
+        return;
+      }
+      
+      playScene(sceneOrder[currentScene]).then(() => {
+        currentScene++;
+        setTimeout(playNextScene, 2000);
+      });
+    }
+    
+    playNextScene();
+  }, 2000);
 
   // Utility functions
   function setActiveWB(id) {
-    [wbA, wbB, wbC, wbD].forEach(el => el.classList.remove('active', 'done'));
-    if (id === 'A') wbA.classList.add('active');
-    if (id === 'B') { wbA.classList.add('done'); wbB.classList.add('active'); }
-    if (id === 'C') { wbA.classList.add('done'); wbB.classList.add('done'); wbC.classList.add('active'); }
-    if (id === 'D') { wbA.classList.add('done'); wbB.classList.add('done'); wbC.classList.add('done'); wbD.classList.add('active'); }
+    [wbA, wbB, wbC, wbD].forEach(el => el.classList.remove('active'));
+    document.getElementById(`wb${id}`).classList.add('active');
   }
-
-  let scenes = {A: null, B: null, C: null, D: null};
-  const STORAGE_KEY = 'vape_brain_scenes';
-
-  function loadScenes() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    try { scenes = JSON.parse(raw) || scenes; return true; } catch (_) { return false; }
-  }
-
-  function saveScenes(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
-  function clearScenes() { localStorage.removeItem(STORAGE_KEY); }
 
   function projectToScreen(v3) {
     const cam = scene.camera; 
@@ -676,24 +542,34 @@ function initializeApplication() {
 
   function panelAnchor2D() {
     const r = call.getBoundingClientRect();
-    return { x: r.left + 12, y: r.top + r.height * 0.35 };
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
 
   // CTA handler
   ctaBtn.addEventListener('click', () => {
     document.body.classList.add('fade-out');
     setTimeout(() => { 
-      window.location.href = 'next_scene.html';
+      window.location.href = 'classroom_scene.html';
     }, 900);
   });
 
-  // Load existing scenes and auto-play with preconfigured positions
-  loadScenes(); // Try to load, but don't depend on it
+  // Add floating particles for depth
+  createParticles();
   
-  // Auto-run with preconfigured positions after a short delay
-  setTimeout(() => {
-    autoRunSequence();
-  }, 1500);
+  function createParticles() {
+    const particles = document.getElementById('particles');
+    for (let i = 0; i < 50; i++) {
+      const particle = document.createElement('a-entity');
+      particle.setAttribute('geometry', 'primitive: sphere; radius: 0.02');
+      particle.setAttribute('material', 'color: #4fc3f7; transparent: true; opacity: 0.3');
+      particle.setAttribute('position', {
+        x: (Math.random() - 0.5) * 10,
+        y: (Math.random() - 0.5) * 10, 
+        z: (Math.random() - 0.5) * 10
+      });
+      particles.appendChild(particle);
+    }
+  }
 }
 </script>
 </body>
