@@ -101,6 +101,16 @@
 <script>
   function showError(msg){ try{ console.error(msg); const el=document.getElementById('err'); el.textContent=String(msg); el.style.display='block'; }catch(_){ } }
 
+  // Clear hotspot positions on Vercel
+  (function() {
+    if (window.location.hostname.includes('vercel.app')) {
+      console.log('Vercel environment detected - clearing hotspot positions');
+      localStorage.removeItem('mouth_hotspot_hs-teeth');
+      localStorage.removeItem('mouth_hotspot_hs-tongue');
+      localStorage.removeItem('mouth_hotspot_hs-cheek');
+    }
+  })();
+
   // --- Hardened autoplay (desktop + Quest) ---
   (function(){
     const scene=document.querySelector('a-scene');
@@ -182,9 +192,18 @@
     // Clear any existing children
     while(el.firstChild) el.removeChild(el.firstChild);
     
-    // Get saved position or use default
+    // Get saved position or use default - WITH DEBUGGING
     const savedPos = localStorage.getItem(`mouth_hotspot_${id}`);
-    const pos = savedPos ? savedPos.split(' ').map(Number) : defaultPos.split(' ').map(Number);
+    console.log(`Hotspot ${id}: savedPos =`, savedPos, 'defaultPos =', defaultPos);
+    
+    let pos;
+    if (window.location.hostname.includes('vercel.app') && !savedPos) {
+        console.log('Vercel detected - no saved positions, using defaults');
+        pos = defaultPos.split(' ').map(Number);
+    } else {
+        pos = savedPos ? savedPos.split(' ').map(Number) : defaultPos.split(' ').map(Number);
+    }
+    
     el.setAttribute('position', {x: pos[0], y: pos[1], z: pos[2]});
     
     // Create the "i" icon
