@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
-    html, body { margin:0; height:100%; background:#000; font-family:system-ui,Segoe UI,Arial; overflow: hidden; }
+    html, body { margin:0; height:100%; background:#f0f2f5; font-family:system-ui,Segoe UI,Arial; overflow: hidden; }
     .whiteboard{
       position:fixed; left:12px; top:18px; width:420px; max-width:40vw; z-index:1200;
       background:rgba(248, 251, 255, 0.95); border:2px solid #dbe7ff; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.30);
@@ -31,8 +31,22 @@
     .cta{position:fixed; left:50%; transform:translateX(-50%); bottom:28px; z-index:1200; display:none;}
     .cta button{background:#0f1220;color:#cfe8ff;border:1px solid #243159;border-radius:12px;padding:12px 18px;font-size:18px;cursor:pointer}
     .cta button:hover{background:#182242}
-    #statusDot{ position:fixed; right:12px; bottom:12px; z-index:1200; width:10px; height:10px; border-radius:50%; background:#2aa54a; border:1px solid #511; }
     
+    /* Placement Mode UI */
+    .placement-ui{
+      position:fixed; right:12px; bottom:40px; z-index:1300; background:rgba(255,255,255,0.95);
+      border:2px solid #3b82f6; border-radius:10px; padding:12px; display:none;
+    }
+    .placement-ui h4{ margin:0 0 8px 0; color:#0f172a }
+    .placement-ui button{ margin:2px; padding:6px 10px; border:1px solid #ccc; border-radius:6px; background:#f8f9fa; cursor:pointer }
+    .placement-ui button:hover{ background:#e9ecef }
+    
+    /* Instructions */
+    .instructions{
+      position:fixed; left:50%; transform:translateX(-50%); top:20px; z-index:1200; 
+      background:#fffbeb; border:2px solid #f59e0b; border-radius:10px; padding:10px 14px; display:none;
+    }
+
     /* VR Controls Help */
     .vr-controls-help{
       position:fixed; left:50%; transform:translateX(-50%); bottom:20px; z-index:1200; 
@@ -44,20 +58,6 @@
     /* Fade transition */
     .fade-out{ animation:fade 0.9s forwards }
     @keyframes fade { to { opacity:0; transform:scale(.96) } }
-
-    /* 3D Navigation Hints */
-    .nav-hint {
-      position: fixed;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 12px;
-      z-index: 1200;
-      display: none;
-    }
-    #hint-rotate { top: 20px; right: 20px; }
-    #hint-zoom { bottom: 80px; left: 20px; }
   </style>
 </head>
 <body>
@@ -82,7 +82,19 @@
   <circle id="leaderDot" cx="0" cy="0" r="6" fill="#ff4444" stroke="#800" stroke-width="2" />
 </svg>
 
-<div id="statusDot"></div>
+<!-- Placement Mode Controls -->
+<div class="placement-ui" id="placementUI">
+  <h4>📹 Placement Mode: <span id="currentAnswer">A</span></h4>
+  <button id="saveBtn">Save Position</button>
+  <button id="cancelBtn">Cancel</button>
+  <button id="exportBtn">Export All Data</button>
+  <button id="clearBtn">Clear All</button>
+</div>
+
+<!-- Instructions -->
+<div class="instructions" id="instructions">
+  <strong>Placement Mode:</strong> Click on the brain to place the red dot, then click "Save Position"
+</div>
 
 <!-- VR Controls Help -->
 <div class="vr-controls-help" id="vrControls">
@@ -90,14 +102,11 @@
   <div>Grip: Rotate Brain • Trigger: Zoom • A/X: Next Scene</div>
 </div>
 
-<!-- Navigation Hints -->
-<div class="nav-hint" id="hint-rotate">Drag to Rotate • Scroll to Zoom</div>
-
 <div class="cta" id="ctaBox"><button id="ctaBtn">Continue to Next Scene</button></div>
 
 <a-scene 
   renderer="antialias:true; physicallyCorrectLights:true; colorManagement:true; toneMapping:ACESFilmic;"
-  background="color:#000" 
+  background="color:#f0f2f5" 
   shadow="type: pcfsoft" 
   vr-mode-ui="enabled:true"
   cursor="rayOrigin: mouse"
@@ -108,21 +117,17 @@
     <audio id="clickSound" src="./assets/audio/click.mp3" preload="auto"></audio>
   </a-assets>
 
-  <!-- Space Environment -->
-  <a-sky color="#0a0a1f"></a-sky>
-  
-  <!-- Floating particles for depth -->
-  <a-entity id="particles"></a-entity>
+  <!-- Light background environment -->
+  <a-sky color="#f0f2f5"></a-sky>
 
   <a-entity id="rig" position="0 1.6 0">
     <a-entity id="cam" camera="fov: 80" look-controls="pointerLockEnabled: true"></a-entity>
   </a-entity>
 
-  <!-- Enhanced Lighting -->
-  <a-entity light="type: ambient; intensity: 0.4; color:#1a237e"></a-entity>
-  <a-entity light="type: directional; intensity: 1.0; color:#ffffff" position="3 5 3" shadow="cast:true; shadowMapSize: 1024"></a-entity>
-  <a-entity light="type: point; intensity: 0.8; color:#4fc3f7" position="-2 3 -1" distance="8"></a-entity>
-  <a-entity light="type: point; intensity: 0.6; color:#ff4081" position="2 2 2" distance="6"></a-entity>
+  <!-- Enhanced Lighting for light background -->
+  <a-entity light="type: ambient; intensity: 0.6; color:#ffffff"></a-entity>
+  <a-entity light="type: directional; intensity: 1.2; color:#ffffff" position="3 5 3" shadow="cast:true; shadowMapSize: 1024"></a-entity>
+  <a-entity light="type: point; intensity: 0.5; color:#e3f2fd" position="-2 3 -1" distance="8"></a-entity>
 
   <!-- Interactive Brain with better physics -->
   <a-entity id="brain-rig" position="0 1.2 -3">
@@ -137,7 +142,12 @@
     </a-entity>
   </a-entity>
 
-  <!-- Visual indicator for placed dot -->
+  <!-- Permanent dots container - these stay with the brain -->
+  <a-entity id="permanent-dots">
+    <!-- Dots will be added here programmatically -->
+  </a-entity>
+
+  <!-- Visual indicator for placement dot (temporary during placement) -->
   <a-entity id="placement-dot" visible="false">
     <a-sphere radius="0.03" color="#ff4444" emissive="#ff0000" emissiveIntensity="0.5"></a-sphere>
     <a-ring radius="0.05" color="#ff4444" opacity="0.3" rotation="-90 0 0"></a-ring>
@@ -146,16 +156,10 @@
   <!-- VR Controllers -->
   <a-entity laser-controls="hand: right" raycaster="objects: .clickable"></a-entity>
   <a-entity laser-controls="hand: left" raycaster="objects: .clickable"></a-entity>
-
-  <!-- Floating info panels that appear in VR -->
-  <a-entity id="vr-info" position="0 2.5 -2" visible="false">
-    <a-text value="Look at different brain areas" color="#ffd700" align="center" position="0 0.3 0"></a-text>
-    <a-plane color="#000" opacity="0.8" width="1.8" height="0.8" position="0 0 0"></a-plane>
-  </a-entity>
 </a-scene>
 
 <script>
-// Enhanced 3D Brain Experience
+// Enhanced 3D Brain Experience with Placement Mode
 (function() {
   'use strict';
   
@@ -195,14 +199,14 @@
       if (mesh) {
         mesh.traverse(function(node) {
           if (node.isMesh && node.material) {
-            // Enhanced brain materials for VR
+            // Natural brain colors - pinkish/gray
             if (node.material.color) {
-              node.material.color.set('#ff6b9d');
+              node.material.color.set('#ffb6c1'); // Light pink brain color
             }
-            node.material.emissive = new THREE.Color(0x331122);
-            node.material.emissiveIntensity = 0.1;
-            if ('metalness' in node.material) node.material.metalness = 0.3;
-            if ('roughness' in node.material) node.material.roughness = 0.4;
+            node.material.emissive = new THREE.Color(0x221111);
+            node.material.emissiveIntensity = 0.05;
+            if ('metalness' in node.material) node.material.metalness = 0.2;
+            if ('roughness' in node.material) node.material.roughness = 0.6;
             node.material.needsUpdate = true;
           }
         });
@@ -219,10 +223,10 @@
   }
 
   function createFallbackBrain() {
-    // Create a more interesting fallback brain
+    // Create a natural-looking fallback brain
     brain.innerHTML = '';
     brain.setAttribute('geometry', 'primitive: sphere; radius: 0.5');
-    brain.setAttribute('material', 'color: #ff6b9d; metalness: 0.3; roughness: 0.4; emissive: #331122; emissiveIntensity: 0.1');
+    brain.setAttribute('material', 'color: #ffb6c1; metalness: 0.2; roughness: 0.6; emissive: #221111; emissiveIntensity: 0.05');
     sceneInitialized = true;
     initializeApplication();
   }
@@ -256,11 +260,16 @@ function initializeApplication() {
   const ctaBtn = document.getElementById('ctaBtn');
   const wbA = document.getElementById('wbA'), wbB = document.getElementById('wbB'), wbC = document.getElementById('wbC'), wbD = document.getElementById('wbD');
   const placementDot = document.getElementById('placement-dot');
+  const permanentDots = document.getElementById('permanent-dots');
+  const placementUI = document.getElementById('placementUI');
+  const instructions = document.getElementById('instructions');
+  const currentAnswerSpan = document.getElementById('currentAnswer');
+  const saveBtn = document.getElementById('saveBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
   const brainRig = document.getElementById('brain-rig');
   const brain = document.getElementById('brain');
   const scene = document.querySelector('a-scene');
   const vrControls = document.getElementById('vrControls');
-  const vrInfo = document.getElementById('vr-info');
 
   // Enhanced 3D Controls
   let isRotating = false;
@@ -270,6 +279,44 @@ function initializeApplication() {
   let brainScale = 1;
   const SCALE_MIN = 0.5;
   const SCALE_MAX = 2.0;
+
+  // Placement Mode State
+  let isPlacementMode = false;
+  let currentPlacementAnswer = null;
+  let currentDotPosition = null;
+  let animRAF = null;
+
+  // Saved positions
+  let savedPositions = {
+    A: null,
+    B: null, 
+    C: null,
+    D: null
+  };
+
+  // Answer data
+  const answerData = {
+    A: {
+      title: 'Prefrontal Cortex — Attention & Control',
+      body: 'Nicotine disrupts executive control in the prefrontal cortex, degrading sustained attention and focus.',
+      narration: "./assets/audio/vo/vo_A.mp3"
+    },
+    B: {
+      title: 'Hippocampus — Learning & Memory',
+      body: 'Repeated nicotine exposure impairs hippocampal plasticity, affecting learning and memory formation.',
+      narration: "./assets/audio/vo/vo_B.mp3"
+    },
+    C: {
+      title: 'Nucleus Accumbens — Reward & Addiction',
+      body: 'Nicotine drives dopamine surges in reward pathways, significantly increasing addiction vulnerability.',
+      narration: "./assets/audio/vo/vo_C.mp3"
+    },
+    D: {
+      title: 'Amygdala — Mood & Anxiety',
+      body: 'Withdrawal and nicotine effects on amygdala contribute to mood instability and heightened anxiety.',
+      narration: "./assets/audio/vo/vo_D.mp3"
+    }
+  };
 
   // Mouse/Touch Controls for 3D Interaction
   scene.addEventListener('mousedown', startRotation);
@@ -344,73 +391,115 @@ function initializeApplication() {
     brainRig.object3D.scale.set(brainScale, brainScale, brainScale);
   }, { passive: false });
 
-  // VR Controller Support
-  scene.addEventListener('enter-vr', function() {
-    vrControls.style.display = 'block';
-    vrInfo.setAttribute('visible', 'true');
+  // Placement Mode Functions
+  function startPlacementMode(answer) {
+    isPlacementMode = true;
+    currentPlacementAnswer = answer;
+    currentAnswerSpan.textContent = answer;
     
-    // Enhance VR experience
-    brain.setAttribute('scale', '1.5 1.5 1.5');
-  });
+    placementUI.style.display = 'block';
+    instructions.style.display = 'block';
+    instructions.innerHTML = `<strong>Placement Mode for ${answer}:</strong> Click on the brain to place the red dot, then click "Save Position"`;
+    
+    [wbA, wbB, wbC, wbD].forEach(el => el.classList.remove('recording'));
+    document.getElementById(`wb${answer}`).classList.add('recording');
+    
+    title.textContent = answerData[answer].title;
+    body.textContent = answerData[answer].body;
+    call.style.display = 'block';
+    
+    placementDot.setAttribute('visible', 'false');
+    currentDotPosition = null;
+  }
 
-  scene.addEventListener('exit-vr', function() {
-    vrControls.style.display = 'none';
-    vrInfo.setAttribute('visible', 'false');
-    brain.setAttribute('scale', '1.2 1.2 1.2');
-  });
-
-  // Answer data with enhanced 3D positions
-  const answerData = {
-    A: {
-      title: 'Prefrontal Cortex — Attention & Control',
-      body: 'Nicotine disrupts executive control in the prefrontal cortex, degrading sustained attention and focus.',
-      narration: "./assets/audio/vo/vo_A.mp3",
-      position: { x: 0.3, y: 0.4, z: 0.2 },
-      view: { rotationX: 20, rotationY: 30, scale: 1.3 }
-    },
-    B: {
-      title: 'Hippocampus — Learning & Memory',
-      body: 'Repeated nicotine exposure impairs hippocampal plasticity, affecting learning and memory formation.',
-      narration: "./assets/audio/vo/vo_B.mp3", 
-      position: { x: -0.2, y: 0.1, z: 0.3 },
-      view: { rotationX: -10, rotationY: -20, scale: 1.4 }
-    },
-    C: {
-      title: 'Nucleus Accumbens — Reward & Addiction',
-      body: 'Nicotine drives dopamine surges in reward pathways, significantly increasing addiction vulnerability.',
-      narration: "./assets/audio/vo/vo_C.mp3",
-      position: { x: 0.1, y: -0.2, z: 0.4 },
-      view: { rotationX: 15, rotationY: 45, scale: 1.5 }
-    },
-    D: {
-      title: 'Amygdala — Mood & Anxiety',
-      body: 'Withdrawal and nicotine effects on amygdala contribute to mood instability and heightened anxiety.',
-      narration: "./assets/audio/vo/vo_D.mp3",
-      position: { x: -0.3, y: 0.2, z: -0.1 },
-      view: { rotationX: -5, rotationY: -40, scale: 1.6 }
+  function saveCurrentPosition() {
+    if (!currentPlacementAnswer || !currentDotPosition) {
+      alert('Please click on the brain to place a red dot first!');
+      return;
     }
-  };
+    
+    savedPositions[currentPlacementAnswer] = {
+      position: currentDotPosition,
+      rotation: { x: brainRotation.x, y: brainRotation.y },
+      scale: brainScale
+    };
+    
+    // Create permanent dot
+    createPermanentDot(currentPlacementAnswer, currentDotPosition);
+    
+    // Save to localStorage
+    localStorage.setItem('brain_positions', JSON.stringify(savedPositions));
+    
+    document.getElementById(`wb${currentPlacementAnswer}`).classList.remove('recording');
+    document.getElementById(`wb${currentPlacementAnswer}`).classList.add('done');
+    
+    exitPlacementMode();
+    
+    alert(`Position saved for answer ${currentPlacementAnswer}!`);
+  }
+
+  function exitPlacementMode() {
+    isPlacementMode = false;
+    currentPlacementAnswer = null;
+    currentDotPosition = null;
+    
+    placementUI.style.display = 'none';
+    instructions.style.display = 'none';
+    call.style.display = 'none';
+    placementDot.setAttribute('visible', 'false');
+    
+    if (animRAF) {
+      cancelAnimationFrame(animRAF);
+      animRAF = null;
+    }
+  }
+
+  function createPermanentDot(answer, localPosition) {
+    // Remove existing dot for this answer
+    const existingDot = document.getElementById(`dot-${answer}`);
+    if (existingDot) {
+      existingDot.parentNode.removeChild(existingDot);
+    }
+    
+    const dot = document.createElement('a-entity');
+    dot.setAttribute('id', `dot-${answer}`);
+    
+    // Position dot relative to brain
+    dot.object3D.position.set(localPosition[0], localPosition[1], localPosition[2]);
+    
+    // Make dot a child of the brain so it moves with it
+    brain.appendChild(dot);
+    
+    // Create visual dot with label
+    dot.innerHTML = `
+      <a-sphere radius="0.03" color="#ff4444" emissive="#ff0000" emissiveIntensity="0.5"></a-sphere>
+      <a-ring radius="0.05" color="#ff4444" opacity="0.3" rotation="-90 0 0"></a-ring>
+      <a-text value="${answer}" color="#fff" align="center" position="0 0.05 0.02" scale="2 2 2"></a-text>
+    `;
+  }
 
   // Enhanced click handling for brain
   brain.addEventListener('click', function(ev) {
     if (ev.detail && ev.detail.intersection) {
       const point = ev.detail.intersection.point;
       
-      // Place the dot with visual feedback
-      placementDot.object3D.position.copy(point);
-      placementDot.setAttribute('visible', 'true');
-      
-      // Add animation
-      placementDot.setAttribute('animation', {
-        property: 'scale',
-        from: '0 0 0',
-        to: '1 1 1',
-        dur: 300,
-        easing: 'easeOutElastic'
-      });
-      
-      // Show leader line to callout
-      showLeaderLine(point);
+      if (isPlacementMode) {
+        // Placement mode: set temporary placement dot
+        placementDot.object3D.position.copy(point);
+        placementDot.setAttribute('visible', 'true');
+        
+        // Convert to local brain coordinates
+        const localPosition = brain.object3D.worldToLocal(point.clone());
+        currentDotPosition = [localPosition.x, localPosition.y, localPosition.z];
+        
+        // Show leader line to callout
+        showLeaderLine(point);
+      } else {
+        // Normal mode: just show feedback
+        placementDot.object3D.position.copy(point);
+        placementDot.setAttribute('visible', 'true');
+        setTimeout(() => placementDot.setAttribute('visible', 'false'), 500);
+      }
       
       // Play click sound if available
       const clickSound = document.getElementById('clickSound');
@@ -432,98 +521,127 @@ function initializeApplication() {
         line.setAttribute('y2', p.y);
         dot2D.setAttribute('cx', p.x); 
         dot2D.setAttribute('cy', p.y);
-        requestAnimationFrame(drawLeader);
+        animRAF = requestAnimationFrame(drawLeader);
       }
     }
     
+    if (animRAF) cancelAnimationFrame(animRAF);
     svg.style.display = 'block';
-    drawLeader();
+    animRAF = requestAnimationFrame(drawLeader);
   }
 
-  // Auto-play sequence with enhanced 3D animations
+  // Load saved positions
+  function loadSavedPositions() {
+    const saved = localStorage.getItem('brain_positions');
+    if (saved) {
+      try {
+        savedPositions = JSON.parse(saved);
+        
+        // Create permanent dots for saved positions
+        Object.keys(savedPositions).forEach(answer => {
+          if (savedPositions[answer]) {
+            createPermanentDot(answer, savedPositions[answer].position);
+            document.getElementById(`wb${answer}`).classList.add('done');
+          }
+        });
+        
+        return true;
+      } catch (e) {
+        console.error('Error loading saved positions:', e);
+      }
+    }
+    return false;
+  }
+
+  // Auto-play sequence
   function playScene(id) {
     return new Promise((resolve) => {
       const data = answerData[id];
       if (!data) return resolve(0);
       
-      // Animate to the target view
-      animateToView(data.view, data.position).then(() => {
-        setActiveWB(id);
-        title.textContent = data.title;
-        body.textContent = data.body;
-        call.style.display = 'block';
-        
-        // Convert local position to world position for the dot
+      setActiveWB(id);
+      title.textContent = data.title;
+      body.textContent = data.body;
+      call.style.display = 'block';
+      
+      // If we have a saved position, show the dot and leader line
+      if (savedPositions[id]) {
         const worldPos = brain.object3D.localToWorld(
-          new THREE.Vector3(data.position.x, data.position.y, data.position.z)
+          new THREE.Vector3(...savedPositions[id].position)
         );
         showLeaderLine(worldPos);
-        
-        // Play narration
-        const audio = new Audio(data.narration);
-        audio.onended = () => resolve(audio.duration);
-        audio.onerror = () => resolve(0);
-        audio.play().catch(() => resolve(0));
-      });
-    });
-  }
-
-  function animateToView(view, dotPosition) {
-    return new Promise((resolve) => {
-      const targetRotation = {
-        x: THREE.MathUtils.degToRad(view.rotationX || 0),
-        y: THREE.MathUtils.degToRad(view.rotationY || 0),
-        z: 0
-      };
-      
-      const targetScale = view.scale || 1;
-      
-      // Animate rotation and scale
-      brainRig.setAttribute('animation', {
-        property: 'rotation',
-        to: `${targetRotation.x} ${targetRotation.y} ${targetRotation.z}`,
-        dur: 1500,
-        easing: 'easeInOutQuad'
-      });
-      
-      brainRig.setAttribute('animation__scale', {
-        property: 'scale',
-        to: `${targetScale} ${targetScale} ${targetScale}`,
-        dur: 1500,
-        easing: 'easeInOutQuad'
-      });
-      
-      // Place dot at target position
-      placementDot.object3D.position.copy(
-        brain.object3D.localToWorld(
-          new THREE.Vector3(dotPosition.x, dotPosition.y, dotPosition.z)
-        )
-      );
-      placementDot.setAttribute('visible', 'true');
-      
-      setTimeout(resolve, 1600);
-    });
-  }
-
-  // Auto-run the experience
-  setTimeout(() => {
-    const sceneOrder = ['A', 'B', 'C', 'D'];
-    let currentScene = 0;
-    
-    function playNextScene() {
-      if (currentScene >= sceneOrder.length) {
-        ctaBox.style.display = 'block';
-        return;
       }
       
-      playScene(sceneOrder[currentScene]).then(() => {
-        currentScene++;
-        setTimeout(playNextScene, 2000);
+      // Play narration
+      const audio = new Audio(data.narration);
+      audio.onended = () => {
+        call.style.display = 'none';
+        svg.style.display = 'none';
+        resolve(audio.duration);
+      };
+      audio.onerror = () => {
+        call.style.display = 'none';
+        svg.style.display = 'none';
+        resolve(0);
+      };
+      audio.play().catch(() => {
+        call.style.display = 'none';
+        svg.style.display = 'none';
+        resolve(0);
       });
+    });
+  }
+
+  // Wire up placement mode buttons
+  wbA.addEventListener('click', () => startPlacementMode('A'));
+  wbB.addEventListener('click', () => startPlacementMode('B'));
+  wbC.addEventListener('click', () => startPlacementMode('C'));
+  wbD.addEventListener('click', () => startPlacementMode('D'));
+
+  saveBtn.addEventListener('click', saveCurrentPosition);
+  cancelBtn.addEventListener('click', exitPlacementMode);
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const data = JSON.stringify(savedPositions, null, 2);
+    navigator.clipboard.writeText(data);
+    alert('Position data copied to clipboard!');
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    if (confirm('Clear all saved positions?')) {
+      savedPositions = { A: null, B: null, C: null, D: null };
+      localStorage.removeItem('brain_positions');
+      permanentDots.innerHTML = '';
+      [wbA, wbB, wbC, wbD].forEach(el => el.classList.remove('done'));
+      alert('All positions cleared.');
     }
+  });
+
+  // Auto-run the experience if all positions are saved
+  function autoRunExperience() {
+    const allSaved = Object.values(savedPositions).every(pos => pos !== null);
     
-    playNextScene();
-  }, 2000);
+    if (allSaved) {
+      setTimeout(() => {
+        const sceneOrder = ['A', 'B', 'C', 'D'];
+        let currentScene = 0;
+        
+        function playNextScene() {
+          if (currentScene >= sceneOrder.length) {
+            ctaBox.style.display = 'block';
+            return;
+          }
+          
+          playScene(sceneOrder[currentScene]).then(() => {
+            currentScene++;
+            setTimeout(playNextScene, 2000);
+          });
+        }
+        
+        playNextScene();
+      }, 2000);
+    }
+  }
 
   // Utility functions
   function setActiveWB(id) {
@@ -553,23 +671,9 @@ function initializeApplication() {
     }, 900);
   });
 
-  // Add floating particles for depth
-  createParticles();
-  
-  function createParticles() {
-    const particles = document.getElementById('particles');
-    for (let i = 0; i < 50; i++) {
-      const particle = document.createElement('a-entity');
-      particle.setAttribute('geometry', 'primitive: sphere; radius: 0.02');
-      particle.setAttribute('material', 'color: #4fc3f7; transparent: true; opacity: 0.3');
-      particle.setAttribute('position', {
-        x: (Math.random() - 0.5) * 10,
-        y: (Math.random() - 0.5) * 10, 
-        z: (Math.random() - 0.5) * 10
-      });
-      particles.appendChild(particle);
-    }
-  }
+  // Initialize
+  loadSavedPositions();
+  autoRunExperience();
 }
 </script>
 </body>
