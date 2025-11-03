@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vaporized — Intro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg:#000; --fg:#fff; --muted:#bbb;
+    --accent:#23c2ff; --warn:#6a2c2c; --card:#111; --border:#333;
+  }
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Arial;overflow:hidden}
+
+  /* Stage */
+  #stage{position:fixed;inset:0;display:grid;place-items:center}
+  video{max-width:100vw;max-height:100vh;object-fit:cover;background:#000}
+
+  /* Fade overlay */
+  #fade{pointer-events:none;position:fixed;inset:0;background:#000;opacity:0;transition:opacity .6s}
+  #fade.show{opacity:1}
+
+  /* Choice screen — minimal copy */
+  #choice{position:fixed;inset:0;display:none;align-items:center;justify-content:center;gap:24px;background:rgba(0,0,0,.80);padding:20px}
+  .card{min-width:280px;max-width:420px;border-radius:14px;padding:18px 20px;background:var(--card);border:1px solid var(--border);box-shadow:0 10px 24px rgba(0,0,0,.35)}
+  .card h2{margin:0 0 .6em 0;font-size:26px}
+  .btn{display:inline-block;padding:12px 18px;border-radius:10px;border:0;font-weight:800;cursor:pointer}
+  .btn-primary{background:var(--accent);color:#002}
+  .btn-warn{background:var(--warn);color:#fff}
+
+  /* Error bar */
+  #err{position:fixed;left:0;right:0;bottom:0;background:rgba(200,0,0,.75);padding:6px 10px;font-size:12px;display:none;white-space:pre-wrap}
+
+  /* Continue button for Classroom transition */
+  #continueBtn {
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+    padding: 15px 30px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    cursor: pointer;
+    display: none;
+    z-index: 1000;
+  }
+
+  /* Star Wars Intro Styles */
+  #starwars-intro {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    color: #ffd700;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    perspective: 400px;
+    overflow: hidden;
+    display: block; /* Changed to display immediately */
+    z-index: 10000;
+  }
+
+  .crawl {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 800px;
+    margin-left: -400px;
+    text-align: center;
+    transform-origin: 50% 100%;
+    transform: rotateX(25deg);
+    animation: crawl 20s linear; /* Reduced to 20 seconds */
+  }
+
+  .title {
+    font-size: 90px;
+    font-weight: 900;
+    margin-bottom: 100px;
+    text-transform: uppercase;
+    letter-spacing: 10px;
+    color: #ffd700;
+    text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700;
+  }
+
+  .subtitle {
+    font-size: 60px;
+    font-weight: 700;
+    margin-bottom: 80px;
+    color: #ffd700;
+    text-shadow: 0 0 5px #ffd700;
+  }
+
+  .text-content {
+    font-size: 42px;
+    line-height: 1.4;
+    text-align: justify;
+    margin-bottom: 100px;
+  }
+
+  .fade {
+    position: absolute;
+    width: 100%;
+    min-height: 60vh;
+    background: linear-gradient(0deg, transparent, black 90%);
+    top: 0;
+    z-index: 1;
+  }
+
+  /* Crawl animation - adjusted for 20 seconds */
+  @keyframes crawl {
+    0% {
+      top: 800px;
+      transform: rotateX(25deg) translateZ(0);
+    }
+    100% {
+      top: -2000px;
+      transform: rotateX(25deg) translateZ(-1000px);
+    }
+  }
+
+  /* Star field background */
+  .stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+
+  .star {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+  }
+
+  /* Skip button for intro */
+  #skipIntro {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.7);
+    color: #ffd700;
+    border: 1px solid #ffd700;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 10001;
+    font-family: system-ui;
+  }
+
+  #skipIntro:hover {
+    background: rgba(255,215,0,0.2);
+  }
+</style>
+</head>
+<body>
+  <!-- Audio for Star Wars intro music -->
+  <audio id="introMusic" src="assets/audio/intro.mp3" preload="auto" autoplay></audio>
+
+  <!-- Star Wars Intro - Starts immediately -->
+  <div id="starwars-intro">
+    <div class="stars" id="stars"></div>
+    <div class="crawl" id="crawl">
+      <h1 class="title">VAPORIZED</h1>
+      <h2 class="subtitle">A Vape Breakers Production</h2>
+      <div class="text-content">
+        <p>In a world where vaping has become an epidemic among youth, one choice can change everything...</p>
+        <p>What begins as a simple puff sets off an incredible journey through the human body, revealing the hidden dangers that lurk within every vapor cloud.</p>
+        <p>From the mouth to the lungs, from the bloodstream to the brain - witness the path of destruction that unfolds with each inhalation.</p>
+        <p>This is not just a story about vaping. This is a journey into the consequences of a single decision.</p>
+        <p>The choice is yours. The journey awaits...</p>
+      </div>
+    </div>
+    <div class="fade"></div>
+    <button id="skipIntro">Skip Intro</button>
+  </div>
+
+  <div id="stage">
+    <!-- Start muted; we unmute after the user's tap -->
+    <video id="vid" playsinline preload="auto" muted></video>
+  </div>
+
+  <!-- Choice UI (minimal text) -->
+  <div id="choice">
+    <div class="card">
+      <h2>Take a Puff</h2>
+      <button id="btnVR" class="btn btn-primary">Enter Body Journey</button>
+    </div>
+    <div class="card">
+      <h2>No, Thanks</h2>
+      <button id="btnNo" class="btn btn-warn">Skip to Reward</button>
+    </div>
+  </div>
+
+  <!-- Continue to Classroom Button -->
+  <button id="continueBtn" onclick="goToClassroom()">Continue to Classroom</button>
+
+  <div id="fade"></div>
+  <div id="err"></div>
+
+<script>
+  // -------- Paths (change only if your filenames differ) ----------
+  const INTRO      = 'assets/00_intro_1080p24.mp4';
+  const PARKING    = 'assets/01_parking_offer_1080p24.mp4';
+  const TO_VR      = 'journeys/mouth_final.html';
+  const TO_REWARD  = 'assets/reward_scene.html';
+  const TO_CLASSROOM = '../vape_on_the_brain_vr/Classroom/classroom_scene.html';
+
+  // -------- DOM ----------
+  const vid     = document.getElementById('vid');
+  const choice  = document.getElementById('choice');
+  const fadeEl  = document.getElementById('fade');
+  const errEl   = document.getElementById('err');
+  const btnVR   = document.getElementById('btnVR');
+  const btnNo   = document.getElementById('btnNo');
+  const continueBtn = document.getElementById('continueBtn');
+  const starwarsIntro = document.getElementById('starwars-intro');
+  const crawl = document.getElementById('crawl');
+  const skipIntro = document.getElementById('skipIntro');
+  const stars = document.getElementById('stars');
+  const introMusic = document.getElementById('introMusic');
+
+  // -------- Utils ----------
+  function showError(msg){ console.error(msg); errEl.textContent = msg; errEl.style.display='block'; }
+  function fadeAndGo(url){ try{ fadeEl.classList.add('show'); setTimeout(()=>location.href=url, 600); }catch{ location.href=url; } }
+  function showChoice(){ choice.style.display='flex'; btnVR?.focus(); }
+
+  // Function to go to classroom
+  function goToClassroom() {
+    fadeAndGo(TO_CLASSROOM);
+  }
+
+  // Show continue button after body journey completes
+  function showContinueButton() {
+    continueBtn.style.display = 'block';
+  }
+
+  // Create starfield for Star Wars intro
+  function createStarfield() {
+    for (let i = 0; i < 200; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.width = Math.random() * 3 + 'px';
+      star.style.height = star.style.width;
+      star.style.left = Math.random() * 100 + '%';
+      star.style.top = Math.random() * 100 + '%';
+      star.style.opacity = Math.random() * 0.7 + 0.3;
+      stars.appendChild(star);
+    }
+  }
+
+  // Play Star Wars intro
+  function playStarWarsIntro() {
+    return new Promise((resolve) => {
+      // Set music volume and ensure it plays
+      introMusic.volume = 0.7;
+      
+      // Force play the music - browsers may still block this but we try
+      const playMusic = () => {
+        introMusic.play().catch(e => {
+          console.log('Music autoplay blocked, trying again after user interaction');
+          // If blocked, wait for any user interaction and try again
+          document.addEventListener('click', function retryPlay() {
+            introMusic.play();
+            document.removeEventListener('click', retryPlay);
+          }, { once: true });
+        });
+      };
+      
+      playMusic();
+
+      // Skip button functionality
+      const skipHandler = () => {
+        starwarsIntro.style.display = 'none';
+        introMusic.pause();
+        resolve();
+      };
+      
+      skipIntro.addEventListener('click', skipHandler, { once: true });
+      
+      // Auto-complete after 20 seconds
+      setTimeout(() => {
+        if (starwarsIntro.style.display !== 'none') {
+          skipHandler();
+        }
+      }, 20000); // 20 seconds
+    });
+  }
+
+  // Play a src and resolve when it ends; guard timer for bad metadata
+  function playUntilEnd(src){
+    return new Promise((resolve, reject)=>{
+      let guard=null, ended=false;
+
+      vid.src = src;
+      vid.loop = false;
+      vid.onerror = ()=>reject(new Error('Video failed to load: ' + src));
+
+      const start = ()=>{
+        const dur = Number.isFinite(vid.duration) && vid.duration>0 ? vid.duration : 75;
+        guard = setTimeout(()=>{ if(!ended){ cleanup(); resolve(); } }, (dur+2)*1000);
+
+        vid.play()
+          .then(()=>{ vid.onended = ()=>{ ended=true; cleanup(); resolve(); }; })
+          .catch(err=>{ cleanup(); reject(err); });
+      };
+
+      const cleanup = ()=>{ clearTimeout(guard); vid.onended=null; vid.oncanplay=null; vid.onloadedmetadata=null; };
+      vid.onloadedmetadata = start;
+      vid.oncanplay = start;
+      vid.load();
+    });
+  }
+
+  async function startSequenceWithAudio(){
+    vid.muted = false; // enable audio after user gesture
+    
+    // Wait for Star Wars intro to complete or be skipped (20 seconds max)
+    await playStarWarsIntro();
+    
+    // Then continue with original videos
+    await playUntilEnd(INTRO);
+    await playUntilEnd(PARKING);
+    showChoice();
+  }
+
+  // Initialize starfield and start the sequence when page loads
+  window.addEventListener('load', async () => {
+    createStarfield();
+    try {
+      await startSequenceWithAudio();
+    } catch(e) {
+      showError(e.message || String(e));
+      showChoice();
+    }
+  });
+
+  // Choice actions + keyboard shortcuts
+  btnVR.addEventListener('click',  ()=> {
+    fadeAndGo(TO_VR);
+    setTimeout(showContinueButton, 45000); // Show after 45 seconds
+  });
+  
+  btnNo.addEventListener('click',  ()=> goReward());
+
+  window.addEventListener('keydown', (e)=>{
+    if(e.key==='1') {
+      fadeAndGo(TO_VR);
+      setTimeout(showContinueButton, 45000);
+    }
+    if(e.key==='2') goReward();
+    if(e.key==='3') goToClassroom();
+    if(e.key==='Escape' && starwarsIntro.style.display === 'block') {
+      starwarsIntro.style.display = 'none';
+      introMusic.pause();
+    }
+  });
+
+  // Reward navigation with a defensive fallback
+  function goReward(){
+    try { location.href = TO_REWARD; }
+    catch { location.href = 'reward_scene.html'; }
+  }
+
+  // Auto-detect if we're returning from body journey and show continue button
+  window.addEventListener('pageshow', function(event) {
+    if (sessionStorage.getItem('bodyJourneyCompleted')) {
+      showContinueButton();
+      sessionStorage.removeItem('bodyJourneyCompleted');
+    }
+  });
+</script>
+</body>
+</html>
