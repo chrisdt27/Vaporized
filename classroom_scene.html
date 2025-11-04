@@ -328,7 +328,8 @@ font-size: 18px;
 <div id="toast"></div>
 
 <script>
-const PRACTICE_URL = '/Practice/practice_scene.html'; // Part 3 when ready
+// CHANGED: Updated to point to Track video instead of practice scene
+const PRACTICE_URL = 'assets/video/Track.html'; // UPDATED PATH
 
 const quiz = [
 {
@@ -360,7 +361,7 @@ id: 'Q3',
 question: 'In a teen brain, nicotine makes it easier to get hooked because it…',
 options: {
 A: 'Reduces blood pressure',
-B: 'Boosts the brain’s reward system',
+B: 'Boosts the brain\'s reward system',
 C: 'Builds more muscle tissue',
 D: 'Improves lung flexibility'
 },
@@ -377,7 +378,7 @@ C: 'Spinal cord',
 D: 'Jaw muscles'
 },
 correct: 'A',
-feedback: 'Nicotine messes with the amygdala, the brain’s emotion hub, which can amplify stress and mood swings.'
+feedback: 'Nicotine messes with the amygdala, the brain\'s emotion hub, which can amplify stress and mood swings.'
 }
 ];
 
@@ -546,12 +547,9 @@ handleAnswer(btn.dataset.key);
 });
 });
 
+// CHANGED: Simplified navigation function
 function goToPractice() {
-try {
-parent.postMessage({ type: 'goPracticeQuiz', href: PRACTICE_URL }, '*');
-} catch {
-window.location.href = PRACTICE_URL;
-}
+    window.location.href = PRACTICE_URL;
 }
 ctaPractice.addEventListener('click', goToPractice);
 
