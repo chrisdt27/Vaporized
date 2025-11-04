@@ -40,7 +40,7 @@
     <a-entity light="type: ambient; intensity: 0.55"></a-entity>
     <a-entity light="type: directional; intensity: 0.9" position="1 2 1"></a-entity>
 
-    <a-entity id="cam" camera="near:0.001; far:1000; fov:80" look-controls position="0 0 0.12">
+    <a-entity id="cam" camera="near:0.001; far:1000; fov:80" look-controls position="0 0.1 0.1">
       <a-entity id="mouseRay" cursor="rayOrigin: mouse" raycaster="objects: .clickable; far: 8; interval: 0"></a-entity>
     </a-entity>
 
@@ -431,11 +431,13 @@
         const targetHalf=0.6; const s=halfMin<targetHalf?(targetHalf/halfMin):1.0;
         root.scale.multiplyScalar(s);
 
-        cam.object3D.position.set(0,0,0.12);
+        // Start INSIDE the lung - consistent position for both desktop and Oculus
+        cam.object3D.position.set(0, 0.1, 0.1);
         cam.object3D.lookAt(new THREE.Vector3(0,0,-1));
 
         placeHotspotsFront();
         console.log(`Lung size (m): ${size.x.toFixed(4)} ${size.y.toFixed(4)} ${size.z.toFixed(4)}`);
+        console.log(`Camera positioned inside lung at: ${cam.object3D.position.x.toFixed(3)}, ${cam.object3D.position.y.toFixed(3)}, ${cam.object3D.position.z.toFixed(3)}`);
       }
 
       modelEl.addEventListener('model-error', ()=> showError('Failed to load GLB at assets/models/Lung.glb'));
@@ -656,7 +658,7 @@
         root.position.sub(center);
         const halfMin=Math.max(1e-6, Math.min(size.x,size.y,size.z)*.5), targetHalf=.6;
         const s=halfMin<targetHalf?(targetHalf/halfMin):1; root.scale.multiplyScalar(s);
-        camEl.object3D.position.set(0,0,0.12); camEl.object3D.lookAt(new THREE.Vector3(0,0,-1));
+        camEl.object3D.position.set(0,0.1,0.1); camEl.object3D.lookAt(new THREE.Vector3(0,0,-1));
         fixMaterials(root);
       }
       if(scene.renderer){ scene.renderer.setClearColor(0x000000,1); }
