@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Bronchi Inside (Narrated + Synchronized Aerosol → Auto-Advance)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bronchi – VR Optimized for Oculus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1, maximum-scale=1"/>
   <!-- A-Frame 1.5.0 -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
-    html, body { margin:0; height:100%; background:#000; }
+    html, body { margin:0; height:100%; background:#000; overflow: hidden; }
     #err{
       position:fixed; left:0; right:0; bottom:0;
       color:#fff; background:rgba(200,0,0,.25);
@@ -26,7 +26,7 @@
       font-family: Arial, sans-serif;
       max-width: 320px;
       display: none;
-      z-index: 1000;
+      z-index: 10000;
       box-shadow: 0 0 25px rgba(255, 68, 68, 0.6);
       backdrop-filter: blur(5px);
     }
@@ -78,27 +78,35 @@
       font-size: 16px;
       margin-right: 5px;
     }
+
+    /* VR-specific optimizations */
+    .a-enter-vr-button {
+      background: #00a2ff !important;
+      border-radius: 8px !important;
+    }
   </style>
 </head>
 <body>
   <a-scene
     background="color: #000000"
     renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true; sortTransparentObjects: true;"
-    vr-mode-ui="enabled: false"
+    xr-mode-ui="enabled: true"
+    vr-mode-ui="enterVRButton: true"
     cursor="rayOrigin: mouse"
     raycaster="objects: .clickable"
   >
-    <!-- Neutral lighting -->
-    <a-entity light="type: ambient; intensity: 0.55"></a-entity>
-    <a-entity light="type: directional; intensity: 0.9" position="1 2 1"></a-entity>
+    <!-- Enhanced lighting for VR clarity -->
+    <a-entity light="type: ambient; intensity: 0.65; color: #ffffff"></a-entity>
+    <a-entity light="type: directional; intensity: 1.0; color: #ffffff" position="1 2 1"></a-entity>
+    <a-entity light="type: directional; intensity: 0.5; color: #ffffff" position="-1 1 -1"></a-entity>
 
-    <!-- Camera with cursor -->
-    <a-entity id="rig" position="0 1.5 0">
+    <!-- Camera positioned INSIDE bronchi for consistent VR/desktop experience -->
+    <a-entity id="rig" position="0 0.8 -0.3">
       <a-entity id="cam"
         camera="near: 0.001; far: 1500; fov: 80"
-        look-controls="pointerLockEnabled: false"
-        position="0 0 0"
-        rotation="-90 0 0">
+        look-controls="pointerLockEnabled: false; touchEnabled: true; mouseEnabled: true"
+        wasd-controls="enabled: false"
+        position="0 0 0">
         <!-- Cursor for interaction -->
         <a-entity cursor="fuse: false; rayOrigin: mouse"
                   raycaster="objects: .clickable; far: 20; interval: 100"
@@ -109,17 +117,11 @@
       </a-entity>
     </a-entity>
 
-    <!-- Tiny cyan reference while loading -->
-    <a-entity geometry="primitive: box; width: 0.02; height: 0.02; depth: 0.02"
-              material="color: cyan; shader: flat; side: double; fog: false"
-              position="0 0 -0.6">
-    </a-entity>
-
-    <!-- Bronchi model (.glb) — corrected relative path -->
+    <!-- Bronchi model (.glb) -->
     <a-entity id="bronchi" gltf-model="../assets/models/bronchi.glb" visible="true"></a-entity>
 
-    <!-- Hotspots with professional "i" icons -->
-    <a-entity id="hs-cilia" position="0.5 1.0 -0.3" class="clickable" data-popup="popup1">
+    <!-- VR-OPTIMIZED Hotspot positions - INSIDE the bronchi where camera starts -->
+    <a-entity id="hs-cilia" position="0.1 0.2 -0.6" class="clickable" data-popup="popup1">
       <!-- Red circle with "i" -->
       <a-circle radius="0.03" color="#d40000" material="shader: flat; opacity: 0.9"
                 animation="property: scale; to: 1.15 1.15 1; dur: 1200; dir: alternate; loop: true; easing: easeInOutSine">
@@ -129,7 +131,7 @@
       <a-sphere radius="0.08" material="color: #fff; opacity: 0; transparent: true"></a-sphere>
     </a-entity>
     
-    <a-entity id="hs-inflammation" position="-0.5 0.5 -0.5" class="clickable" data-popup="popup2">
+    <a-entity id="hs-inflammation" position="-0.3 0.3 -0.8" class="clickable" data-popup="popup2">
       <!-- Red circle with "i" -->
       <a-circle radius="0.03" color="#d40000" material="shader: flat; opacity: 0.9"
                 animation="property: scale; to: 1.15 1.15 1; dur: 1200; dir: alternate; loop: true; easing: easeInOutSine">
@@ -139,7 +141,7 @@
       <a-sphere radius="0.08" material="color: #fff; opacity: 0; transparent: true"></a-sphere>
     </a-entity>
 
-    <a-entity id="hs-infection" position="0.0 0.8 -0.7" class="clickable" data-popup="popup3">
+    <a-entity id="hs-infection" position="0.2 0.1 -1.0" class="clickable" data-popup="popup3">
       <!-- Red circle with "i" -->
       <a-circle radius="0.03" color="#d40000" material="shader: flat; opacity: 0.9"
                 animation="property: scale; to: 1.15 1.15 1; dur: 1200; dir: alternate; loop: true; easing: easeInOutSine">
@@ -206,7 +208,7 @@
 
   <div id="err"></div>
 
-  <!-- Narration: auto-plays; auto-advance to Lung on end - corrected relative path -->
+  <!-- Narration: auto-plays; auto-advance to Lung on end -->
   <audio id="narration" src="../assets/audio/bronchi_narration.mp3" autoplay preload="auto" playsinline></audio>
 
   <script>
@@ -219,6 +221,31 @@
         el.style.display='block';
       }catch(e){}
     }
+
+    // --------- Enhanced VR Camera Positioning ----------
+    (function(){
+      let cameraPositioned = false;
+      
+      function positionCameraInsideBronchi() {
+        if (cameraPositioned) return;
+        
+        const rig = document.getElementById('rig');
+        if (rig) {
+          // Position camera inside the bronchi (adjust based on your model)
+          rig.setAttribute('position', '0 0.8 -0.3');
+          console.log('Camera positioned inside bronchi for VR');
+          cameraPositioned = true;
+        }
+      }
+
+      // Position camera when scene loads and when entering VR
+      const scene = document.querySelector('a-scene');
+      scene.addEventListener('loaded', positionCameraInsideBronchi);
+      scene.addEventListener('enter-vr', function() {
+        setTimeout(positionCameraInsideBronchi, 100);
+      });
+      scene.addEventListener('exit-vr', positionCameraInsideBronchi);
+    })();
 
     // --------- Popup Management ----------
     function showPopup(popupId) {
@@ -313,9 +340,13 @@
           }
         });
 
-        // Force show that interactions are working
+        // Test popup system after scene loads
         setTimeout(() => {
-          console.log('Interaction system ready - click the "i" icons!');
+          console.log('Interaction system ready - look for red pulsing "i" icons INSIDE the bronchi!');
+          console.log('VR-optimized hotspot positions:');
+          console.log('- hs-cilia: 0.1 0.2 -0.6 (straight ahead)');
+          console.log('- hs-inflammation: -0.3 0.3 -0.8 (left side)');
+          console.log('- hs-infection: 0.2 0.1 -1.0 (right side, further down)');
         }, 2000);
       });
     });
@@ -518,13 +549,6 @@
         const s = halfMin < targetHalf ? (targetHalf / halfMin) : 1.0;
         root.scale.multiplyScalar(s);
 
-        // Position camera at top of trachea looking down
-        try {
-          // Camera is already positioned via the rig and cam elements
-          // Just ensure it's looking in the right direction
-          camEl.object3D.lookAt(new THREE.Vector3(0, -1, 0));
-        } catch (_) {}
-
         ensureInsideVisibilityNoCulling(root);
       }
 
@@ -554,7 +578,7 @@
       });
     })();
 
-    // Progress tracking - add this to track completion
+    // Progress tracking
     (function() {
       const currentPage = window.location.pathname;
       
