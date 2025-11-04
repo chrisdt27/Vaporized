@@ -349,18 +349,19 @@
   </div>
 
   <!-- Continue to Classroom Button -->
-  <button id="continueBtn" onclick="goToClassroom()">Continue to Classroom</button>
+  <button id="continueBtn" onclick="goToClassroom()">Continue to Track Practice</button>
 
   <!-- Fade overlay starts visible and becomes transparent after loading -->
   <div id="fade" class="hidden"></div>
   <div id="err"></div>
 
 <script>
-  // -------- Paths (change only if your filenames differ) ----------
+  // -------- Paths (UPDATED FOR NEW FLOW) ----------
   const INTRO      = 'assets/00_intro_1080p24.mp4';
   const PARKING    = 'assets/01_parking_offer_1080p24.mp4';
   const TO_VR      = 'journeys/mouth_final.html';
-  const TO_CLASSROOM = '../vape_on_the_brain_vr/Classroom/classroom_scene.html';
+  const TO_CLASSROOM = 'assets/video/Track.html'; // CHANGED: Now points to track video
+  const TO_PART3   = 'part3-vaping-impact.html';  // ADDED: Path to Part 3 experience
 
   // -------- DOM ----------
   const vid     = document.getElementById('vid');
@@ -414,8 +415,9 @@
     fadeEl.classList.add('hidden');
   }
 
+  // UPDATED: Now goes to track video instead of classroom
   function goToClassroom() {
-    fadeAndGo(TO_CLASSROOM);
+    fadeAndGo(TO_CLASSROOM); // This now points to Track.html video
   }
 
   function showContinueButton() {
