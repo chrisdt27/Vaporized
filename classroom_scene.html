@@ -1,110 +1,563 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Vaporized — Classroom → Brain</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    html,body{margin:0;height:100%;background:#000;font-family:system-ui,Segoe UI,Arial;overflow:hidden}
-    #classroomStage{position:fixed;inset:0;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center}
-    video.bg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:90vw;height:auto;max-height:80vh;object-fit:contain;background:#000}
-    #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)}
-    #play{ width:96px;height:96px;border-radius:50%;border:0;background:#fff;cursor:pointer;position:relative;box-shadow:0 8px 24px rgba(0,0,0,.45) }
-    #play::after{ content:"";position:absolute;left:40px;top:30px;border-left:24px solid #000;border-top:14px solid transparent;border-bottom:14px solid transparent;width:0;height:0 }
-    #continue{ position:fixed;right:16px;bottom:16px;display:none;background:#23c2ff;color:#001;font-weight:800;border:0;border-radius:10px;padding:10px 14px;cursor:pointer }
-    #err{position:fixed;left:0;right:0;top:0;background:rgba(200,0,0,.9);padding:8px 10px;font-size:13px;display:none;white-space:pre-wrap}
-    #skip{position:fixed;left:16px;bottom:16px;background:#111;color:#eee;border:1px solid #333;border-radius:10px;padding:8px 12px;cursor:pointer;opacity:.7}
-    #skip:hover{opacity:1}
-  </style>
+<meta charset="utf-8" />
+<title>Vaporized — Classroom Pop Quiz</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- Handwritten PRINT-style font -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+
+<style>
+* { box-sizing: border-box; }
+html, body {
+margin: 0;
+padding: 0;
+height: 100%;
+font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+background: radial-gradient(circle at top, #020617 0, #020617 40%, #000 100%);
+color: #e5e7eb;
+}
+body {
+display: flex;
+align-items: center;
+justify-content: center;
+}
+.app {
+width: 100%;
+max-width: 1100px;
+height: 100%;
+max-height: 650px;
+padding: 16px;
+display: flex;
+flex-direction: column;
+gap: 12px;
+}
+
+/* HUD (top pills) */
+.hud {
+display: flex;
+justify-content: space-between;
+align-items: center;
+font-size: 14px;
+}
+.hud-pill {
+background: rgba(15, 23, 42, 0.9);
+border-radius: 999px;
+padding: 6px 12px;
+border: 1px solid rgba(148, 163, 184, 0.7);
+}
+
+.board-wrap {
+flex: 1;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+/* Frame = brown wood */
+.board-frame {
+position: relative;
+width: 100%;
+height: 100%;
+max-width: 1000px;
+max-height: 560px;
+background: #4a3421; /* warm brown */
+border-radius: 22px;
+padding: 16px;
+box-shadow:
+0 22px 60px rgba(0,0,0,0.8),
+0 0 0 2px rgba(15,23,42,0.9);
+}
+
+/* Chalkboard = deep green */
+.board-inner {
+position: relative;
+width: 100%;
+height: 100%;
+border-radius: 16px;
+padding: 18px 22px 20px;
+background: #0b3b24;
+box-shadow:
+0 0 0 3px #020617 inset,
+0 0 30px rgba(0,0,0,0.7) inset;
+transition: background-color 180ms ease-out, transform 150ms ease-out;
+}
+.board-inner.flash-good {
+background: #166534 !important;
+transform: translateY(-2px);
+}
+.board-inner.flash-bad {
+background: #7f1d1d !important;
+transform: translateY(2px);
+}
+
+.chalk-lines {
+position: absolute;
+inset: 0;
+pointer-events: none;
+opacity: 0.14;
+background-image: linear-gradient(
+rgba(248,250,252,0.18) 1px,
+transparent 1px
+);
+background-size: 100% 30px;
+border-radius: 14px;
+}
+
+/* Handwritten PRINT style for Q + answers */
+.question {
+font-family: "Patrick Hand", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+font-size: 26px;
+font-weight: 400;
+text-align: center;
+margin-bottom: 18px;
+line-height: 1.4;
+color: #f9fafb;
+text-shadow: 0 1px 2px rgba(15,23,42,0.8);
+}
+
+/* Answers stacked A–D vertically, no fill box */
+.answers {
+display: flex;
+flex-direction: column;
+gap: 10px;
+margin-top: 10px;
+}
+
+.answer-btn {
+position: relative;
+border: 0;
+background: transparent; /* no box, chalk-on-board look */
+color: #f9fafb;
+cursor: pointer;
+padding: 4px 8px 4px 40px; /* indent for label */
+text-align: left;
+font-family: "Patrick Hand", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+font-size: 22px;
+line-height: 1.4;
+box-shadow: none;
+transition: transform 80ms ease-out, text-shadow 120ms ease-out;
+}
+.answer-btn:hover {
+transform: translateX(3px);
+text-shadow:
+0 0 4px rgba(248,250,252,0.8),
+0 1px 2px rgba(15,23,42,0.9);
+}
+.answer-btn:active {
+transform: translateX(1px);
+}
+.answer-btn.correct {
+text-shadow:
+0 0 6px rgba(34,197,94,0.9),
+0 1px 3px rgba(15,23,42,0.9);
+}
+.answer-btn.incorrect {
+text-shadow:
+0 0 6px rgba(239,68,68,0.9),
+0 1px 3px rgba(15,23,42,0.9);
+}
+
+.answer-label {
+position: absolute;
+left: 8px;
+top: 50%;
+transform: translateY(-50%);
+width: 24px;
+height: 24px;
+border-radius: 999px;
+border: 2px solid #f9fafb;
+display: flex;
+align-items: center;
+justify-content: center;
+font-weight: 700;
+font-size: 14px;
+background: transparent;
+color: #f9fafb;
+text-shadow: 0 1px 2px rgba(15,23,42,0.9);
+}
+
+.answer-text {
+font-family: "Patrick Hand", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+font-size: 22px;
+font-weight: 400;
+color: #f9fafb;
+text-shadow: 0 1px 2px rgba(15,23,42,0.8);
+}
+
+.feedback {
+margin-top: 18px;
+min-height: 44px;
+font-size: 14px;
+color: #e5e7eb;
+background: rgba(15,23,42,0.92);
+border-radius: 10px;
+padding: 8px 10px;
+border: 1px solid rgba(148,163,184,0.65);
+display: flex;
+align-items: center;
+opacity: 0;
+transform: translateY(4px);
+transition: opacity 180ms ease-out, transform 180ms ease-out;
+}
+.feedback.visible {
+opacity: 1;
+transform: translateY(0);
+}
+
+.feedback-icon {
+margin-right: 8px;
+font-size: 18px;
+}
+
+.footer-bar {
+display: flex;
+justify-content: flex-end;
+gap: 8px;
+font-size: 13px;
+}
+
+.pill {
+padding: 4px 10px;
+border-radius: 999px;
+background: rgba(15,23,42,0.9);
+border: 1px solid rgba(148,163,184,0.65);
+}
+
+.cta-bar {
+margin-top: 6px;
+display: none;
+justify-content: center;
+}
+.cta-btn {
+padding: 10px 16px;
+border-radius: 999px;
+border: 0;
+background: #10b981;
+color: #022c22;
+font-weight: 700;
+font-size: 16px;
+cursor: pointer;
+box-shadow: 0 10px 26px rgba(0,0,0,0.7);
+}
+.cta-btn:hover {
+background: #059669;
+}
+
+#toast {
+position: fixed;
+left: 50%;
+bottom: 10px;
+transform: translateX(-50%);
+background: rgba(15,23,42,0.96);
+border-radius: 999px;
+padding: 6px 12px;
+border: 1px solid rgba(148,163,184,0.7);
+font-size: 13px;
+display: none;
+z-index: 1000;
+}
+
+@media (max-width: 768px) {
+.board-inner {
+padding: 14px 14px 16px;
+}
+.question {
+font-size: 22px;
+}
+.answer-btn,
+.answer-text {
+font-size: 18px;
+}
+}
+</style>
 </head>
 <body>
-
-<div id="classroomStage">
-  <video id="bg" class="bg" preload="auto" playsinline></video>
-  <div id="gate"><button id="play" aria-label="Play"></button></div>
-  <button id="continue" type="button">Continue → Enter Brain</button>
-  <button id="skip" type="button" title="Skip video and enter brain">Skip</button>
-  <div id="err"></div>
+<div class="app">
+<div class="hud">
+<div class="hud-pill" id="hudQuestion">Question 1 of 4</div>
+<div class="hud-pill">Click or tap an answer (audio will play)</div>
 </div>
 
+<div class="board-wrap">
+<div class="board-frame">
+<div class="board-inner" id="board">
+<div class="chalk-lines"></div>
+
+<div class="question" id="questionText"></div>
+
+<div class="answers">
+<button class="answer-btn" data-key="A">
+<span class="answer-label">A</span>
+<span class="answer-text"></span>
+</button>
+<button class="answer-btn" data-key="B">
+<span class="answer-label">B</span>
+<span class="answer-text"></span>
+</button>
+<button class="answer-btn" data-key="C">
+<span class="answer-label">C</span>
+<span class="answer-text"></span>
+</button>
+<button class="answer-btn" data-key="D">
+<span class="answer-label">D</span>
+<span class="answer-text"></span>
+</button>
+</div>
+
+<div class="feedback" id="feedback">
+<div class="feedback-icon" id="feedbackIcon"></div>
+<div id="feedbackText"></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="footer-bar">
+<div class="pill" id="scorePill">Score: 0 / 4</div>
+</div>
+
+<div class="cta-bar" id="ctaBar">
+<button class="cta-btn" id="ctaPractice">Time to get to practice!</button>
+</div>
+</div>
+
+<div id="toast"></div>
+
 <script>
-(function(){
-  const params = new URLSearchParams(location.search);
-  const SKIP = params.get('brain') === '1' || location.hash === '#brain';
-  const BG_SRC = 'assets/video/classroom.mp4';
-  
-  const video = document.getElementById('bg');
-  const gate = document.getElementById('gate');
-  const play = document.getElementById('play');
-  const btn = document.getElementById('continue');
-  const err = document.getElementById('err');
-  const skip = document.getElementById('skip');
+const PRACTICE_URL = '/Practice/practice_scene.html'; // Part 3 when ready
 
-  function enterBrain() {
-    // Navigate directly to the brain scene instead of using iframe
-    window.location.href = 'brain_scene.html';
-  }
+const quiz = [
+{
+id: 'Q1',
+question: 'Nicotine in vapes hits which brain area hardest for focus and self-control?',
+options: {
+A: 'Prefrontal cortex',
+B: 'Cerebellum',
+C: 'Brain stem',
+D: 'Occipital lobe'
+},
+correct: 'A',
+feedback: 'Nicotine overloads the prefrontal cortex, the part that helps you focus, plan, and say no.'
+},
+{
+id: 'Q2',
+question: 'Vaping during class mainly hurts your ability to…',
+options: {
+A: 'Grow taller',
+B: 'Remember what you study',
+C: 'See the board clearly',
+D: 'Hear the teacher\'s voice'
+},
+correct: 'B',
+feedback: 'Nicotine scrambles activity in the hippocampus, making new memories and learning harder.'
+},
+{
+id: 'Q3',
+question: 'In a teen brain, nicotine makes it easier to get hooked because it…',
+options: {
+A: 'Reduces blood pressure',
+B: 'Boosts the brain’s reward system',
+C: 'Builds more muscle tissue',
+D: 'Improves lung flexibility'
+},
+correct: 'B',
+feedback: 'Nicotine overstimulates the reward circuit, making your brain pay attention to the vape instead of your goals.'
+},
+{
+id: 'Q4',
+question: 'Mood swings and anxiety from vaping are linked to changes in…',
+options: {
+A: 'Amygdala (emotion center)',
+B: 'Inner ear (balance)',
+C: 'Spinal cord',
+D: 'Jaw muscles'
+},
+correct: 'A',
+feedback: 'Nicotine messes with the amygdala, the brain’s emotion hub, which can amplify stress and mood swings.'
+}
+];
 
-  if (SKIP) {
-    enterBrain();
-    return;
-  }
+const hudQuestion = document.getElementById('hudQuestion');
+const questionText = document.getElementById('questionText');
+const answerButtons = Array.from(document.querySelectorAll('.answer-btn'));
+const feedback = document.getElementById('feedback');
+const feedbackIcon = document.getElementById('feedbackIcon');
+const feedbackText = document.getElementById('feedbackText');
+const scorePill = document.getElementById('scorePill');
+const board = document.getElementById('board');
+const toastEl = document.getElementById('toast');
+const ctaBar = document.getElementById('ctaBar');
+const ctaPractice = document.getElementById('ctaPractice');
 
-  // Set up video
-  video.src = BG_SRC;
-  video.loop = false;
-  video.muted = false;
-  
-  video.addEventListener('ended', () => { 
-    btn.style.display = 'inline-block';
-  });
-  
-  video.addEventListener('error', () => {
-    err.textContent = 'Could not load classroom video. Skipping to brain…';
-    err.style.display = 'block';
-    setTimeout(enterBrain, 2000);
-  });
+let index = 0;
+let score = 0;
+let locked = false;
 
-  // Play button handler
-  play.addEventListener('click', () => {
-    gate.style.display = 'none';
-    video.play().catch(error => {
-      console.error('Video play failed:', error);
-      err.textContent = 'Video playback failed. Click Continue to enter brain.';
-      err.style.display = 'block';
-      btn.style.display = 'inline-block';
-    });
-  });
+// ---- Narration (Web Speech API) ----
+const hasSpeech = typeof window !== 'undefined' && 'speechSynthesis' in window;
+let currentUtterance = null;
 
-  // Continue and skip buttons
-  btn.addEventListener('click', enterBrain);
-  skip.addEventListener('click', enterBrain);
+function speak(text) {
+if (!hasSpeech || !text) return;
+try {
+window.speechSynthesis.cancel();
+const u = new SpeechSynthesisUtterance(text);
+u.rate = 1.0; // pacing
+u.pitch = 1.0;
+u.volume = 1.0;
+currentUtterance = u;
+window.speechSynthesis.speak(u);
+} catch (e) {
+// fail silently
+}
+}
 
-  // Auto-show continue button after 12 seconds as fallback
-  setTimeout(() => { 
-    btn.style.display = 'inline-block'; 
-  }, 12000);
+function speakAnswerFeedback(q, isCorrect, chosenKey) {
+const correctKey = q.correct;
+const correctText = q.options[correctKey];
+let line;
 
-  // Keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    if ((e.key === 'Enter' || e.key === ' ') && btn.style.display === 'inline-block') {
-      e.preventDefault();
-      btn.click();
-    }
-    // Escape key to skip
-    if (e.key === 'Escape') {
-      enterBrain();
-    }
-  });
+if (isCorrect) {
+// "Correct. [feedback]"
+line = `Correct. ${q.feedback}`;
+} else {
+// "No, that's incorrect. The correct answer is A, Prefrontal cortex. [feedback]"
+line = `No, that's incorrect. The correct answer is ${correctKey}, ${correctText}. ${q.feedback}`;
+}
+speak(line);
+}
 
-  // Try to autoplay when page loads
-  gate.style.display = 'none';
-  video.play().catch(error => {
-    console.log('Autoplay blocked, showing play button');
-    gate.style.display = 'flex';
-  });
+// ---- UI helpers ----
+function showToast(msg, ms=2400) {
+toastEl.textContent = msg;
+toastEl.style.display = 'block';
+setTimeout(()=>{ toastEl.style.display='none'; }, ms);
+}
 
-})();
+function updateHUD() {
+hudQuestion.textContent = `Question ${index+1} of ${quiz.length}`;
+scorePill.textContent = `Score: ${score} / ${quiz.length}`;
+}
+
+function resetBoardVisuals() {
+board.classList.remove('flash-good','flash-bad');
+answerButtons.forEach(btn=>{
+btn.classList.remove('correct','incorrect');
+});
+feedback.classList.remove('visible');
+}
+
+function renderQuestion() {
+const q = quiz[index];
+locked = false;
+resetBoardVisuals();
+questionText.textContent = q.question;
+answerButtons.forEach(btn => {
+const key = btn.dataset.key;
+const textSpan = btn.querySelector('.answer-text');
+textSpan.textContent = q.options[key];
+btn.disabled = false;
+btn.style.display = 'inline-flex';
+});
+updateHUD();
+}
+
+function flashBoard(success) {
+board.classList.remove('flash-good','flash-bad');
+void board.offsetWidth;
+board.classList.add(success ? 'flash-good' : 'flash-bad');
+setTimeout(()=>board.classList.remove('flash-good','flash-bad'), 400);
+}
+
+function handleAnswer(key) {
+if (locked) return;
+locked = true;
+
+const q = quiz[index];
+const correctKey = q.correct;
+const isCorrect = (key === correctKey);
+
+answerButtons.forEach(btn=>{
+btn.disabled = true;
+const k = btn.dataset.key;
+if (k === correctKey) {
+btn.classList.add('correct');
+}
+if (k === key && !isCorrect) {
+btn.classList.add('incorrect');
+}
+});
+
+if (isCorrect) {
+score++;
+feedbackIcon.textContent = '✅';
+feedbackText.textContent = q.feedback;
+flashBoard(true);
+} else {
+feedbackIcon.textContent = '⚠️';
+feedbackText.textContent = q.feedback;
+flashBoard(false);
+}
+feedback.classList.add('visible');
+updateHUD();
+
+// Speak narration line based on correctness
+speakAnswerFeedback(q, isCorrect, key);
+
+setTimeout(()=>{
+index++;
+if (index < quiz.length) {
+renderQuestion();
+} else {
+endQuiz();
+}
+}, 2600);
+}
+
+function endQuiz() {
+const percent = Math.round((score / quiz.length) * 100);
+let msg;
+if (percent === 100) {
+msg = 'Perfect score! Your brain is on it.';
+} else if (percent >= 75) {
+msg = `Nice work — you scored ${percent}%. Protect that brain.`;
+} else {
+msg = `You scored ${percent}%. The brain remembers: vaping hits focus, memory, reward, and mood.`;
+}
+questionText.textContent = msg;
+feedbackIcon.textContent = '🏆';
+feedbackText.textContent = 'Ready to see how this plays out on the field?';
+feedback.classList.add('visible');
+answerButtons.forEach(btn => { btn.style.display='none'; });
+ctaBar.style.display = 'flex';
+hudQuestion.textContent = 'Quiz complete';
+
+// Final spoken line
+speak(`Quiz complete. ${msg} Ready to see how this plays out on the field?`);
+}
+
+answerButtons.forEach(btn => {
+btn.addEventListener('click', () => {
+handleAnswer(btn.dataset.key);
+});
+});
+
+function goToPractice() {
+try {
+parent.postMessage({ type: 'goPracticeQuiz', href: PRACTICE_URL }, '*');
+} catch {
+window.location.href = PRACTICE_URL;
+}
+}
+ctaPractice.addEventListener('click', goToPractice);
+
+window.addEventListener('message', (e)=>{ /* reserved for shell */ });
+
+renderQuestion();
 </script>
 </body>
 </html>
