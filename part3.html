@@ -1,233 +1,263 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Part 3: Vaping Impact on Athletic Performance</title>
+    <title>Vaping vs Athletic Performance - 3D Experience</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; }
-        /* Add any custom styles here */
+        body { margin: 0; font-family: Arial, sans-serif; }
+        .ui-overlay {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+        }
+        .metrics-panel {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
-    <a-scene cursor="rayOrigin: mouse" raycaster="objects: .clickable, .timeline-marker, .breath-button; far: 20; near: 0.1">
+    <a-scene background="color: #87CEEB">
         
-        <!-- ===== PART A: LUNG CAPACITY CHALLENGE ===== -->
-        <a-entity id="lung-comparison">
-            <!-- Healthy Lung -->
-            <a-entity class="lung" id="healthy-lung" position="-1.5 0 -2">
-                <a-entity class="lung-model" geometry="primitive: sphere; radius: 0.8" 
-                          material="color: #87CEEB; transparent: true; opacity: 0.7">
+        <!-- CHOICE STATION -->
+        <a-entity id="choice-station" position="0 1.6 -3">
+            <a-text value="Choose Your Path" position="0 2 0" color="black" align="center"></a-text>
+            
+            <!-- Vape Choice -->
+            <a-entity class="choice" id="vape-choice" position="-1.5 0 0">
+                <a-box color="#FF6B6B" width="0.8" height="0.8" depth="0.1" 
+                       animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
+                </a-box>
+                <a-text value="Try Vape" position="0 -0.6 0" color="black" align="center"></a-text>
+                <a-text value="Quick energy, long-term cost" position="0 -0.9 0" color="#666" 
+                       width="2" align="center" scale="0.8 0.8 0.8"></a-text>
+            </a-entity>
+            
+            <!-- Healthy Choice -->
+            <a-entity class="choice" id="healthy-choice" position="1.5 0 0">
+                <a-box color="#4ECDC4" width="0.8" height="0.8" depth="0.1"
+                       animation="property: position; to: 1.5 0.2 0; dir: alternate; loop: true; dur: 2000">
+                </a-box>
+                <a-text value="Stay Clean" position="0 -0.6 0" color="black" align="center"></a-text>
+                <a-text value="Peak performance, healthy lungs" position="0 -0.9 0" color="#666" 
+                       width="2" align="center" scale="0.8 0.8 0.8"></a-text>
+            </a-entity>
+        </a-entity>
+
+        <!-- TRACK & ATHLETE -->
+        <a-entity id="track-environment" visible="false">
+            <!-- Running Track -->
+            <a-plane color="#2E8B57" rotation="-90 0 0" width="10" height="30" position="0 0 -10"></a-plane>
+            <a-plane color="#FFFFFF" rotation="-90 0 0" width="0.5" height="30" position="0 0.01 -10"></a-plane>
+            
+            <!-- Virtual Athlete -->
+            <a-entity id="athlete" position="0 1 -5">
+                <a-box color="#4682B4" width="0.3" height="1.8" depth="0.2"></a-box>
+                <a-entity id="lung-display" position="0 0.5 0.2">
+                    <a-sphere color="#FFB6C1" radius="0.15" opacity="0.8" 
+                             animation="property: scale; dir: alternate; loop: true; dur: 1500">
+                    </a-sphere>
                 </a-entity>
-                <a-entity text="value: Healthy Lung; color: white; align: center" 
-                          position="0 -1.2 0"></a-entity>
-                <a-entity class="capacity-meter" text="value: 100% Capacity; color: #4CAF50" 
-                          position="0 -1.5 0"></a-entity>
+            </a-entity>
+            
+            <!-- Finish Line -->
+            <a-plane color="#FFD700" rotation="-90 0 0" width="10" height="0.5" position="0 0.02 5"></a-plane>
+            <a-text value="FINISH" position="0 1 5" color="black" align="center"></a-text>
+        </a-entity>
+
+        <!-- LUNG HEALTH VISUALIZATION -->
+        <a-entity id="lung-comparison" position="0 1.5 -2" visible="false">
+            <a-text value="Lung Health Impact" position="0 1.5 0" color="black" align="center"></a-text>
+            
+            <!-- Healthy Lung -->
+            <a-entity position="-1 0 0">
+                <a-sphere color="#87CEEB" radius="0.4" opacity="0.9"
+                         animation="property: scale; dir: alternate; loop: true; dur: 2000">
+                </a-sphere>
+                <a-text value="Healthy Lung" position="0 -0.6 0" color="black" align="center"></a-text>
+                <a-text value="100% Capacity" position="0 -0.9 0" color="green" align="center"></a-text>
             </a-entity>
             
             <!-- Vaper's Lung -->
-            <a-entity class="lung" id="vaper-lung" position="1.5 0 -2">
-                <a-entity class="lung-model" geometry="primitive: sphere; radius: 0.8" 
-                          material="color: #666; transparent: true; opacity: 0.7">
-                </a-entity>
-                <a-entity text="value: Vaper's Lung; color: white; align: center" 
-                          position="0 -1.2 0"></a-entity>
-                <a-entity class="capacity-meter" text="value: 0% Capacity; color: #f44336" 
-                          position="0 -1.5 0"></a-entity>
+            <a-entity position="1 0 0" id="damaged-lung">
+                <a-sphere color="#696969" radius="0.4" opacity="0.9" id="lung-model">
+                </a-sphere>
+                <a-text value="After Vaping" position="0 -0.6 0" color="black" align="center"></a-text>
+                <a-text value="0% Capacity" position="0 -0.9 0" color="red" align="center" id="capacity-meter"></a-text>
             </a-entity>
         </a-entity>
 
-        <!-- Breathing Controls -->
-        <a-entity id="breathing-controls" position="0 -1.5 -3">
-            <a-entity class="breath-button clickable" geometry="primitive: circle; radius: 0.3" 
-                      material="color: #4CAF50" 
-                      text="value: HOLD TO BREATHE IN; color: white; align: center"
-                      position="0 0 0">
-            </a-entity>
-        </a-entity>
+        <!-- UI Elements -->
+        <div class="ui-overlay" id="instruction-panel">
+            <h3>Choose Your Path</h3>
+            <p>Click on a choice to see how it affects athletic performance</p>
+        </div>
 
-        <!-- ===== PART B: PERFORMANCE TIMELINE ===== -->
-        <a-entity id="timeline" position="0 -2 -2">
-            <a-entity class="timeline-track" geometry="primitive: plane; width: 4; height: 0.1" 
-                      material="color: #333" position="0 0 0">
-            </a-entity>
-            
-            <!-- Timeline Markers -->
-            <a-entity class="timeline-marker clickable" position="-1.8 0.2 0.1" data-week="0">
-                <a-entity geometry="primitive: cylinder; radius: 0.1; height: 0.3" 
-                          material="color: #4CAF50">
-                </a-entity>
-                <a-entity text="value: Start; color: white" position="0 -0.4 0"></a-entity>
-            </a-entity>
-            
-            <a-entity class="timeline-marker clickable" position="-0.6 0.2 0.1" data-week="4">
-                <a-entity geometry="primitive: cylinder; radius: 0.1; height: 0.3" 
-                          material="color: #FF9800">
-                </a-entity>
-                <a-entity text="value: 1 Month; color: white" position="0 -0.4 0"></a-entity>
-            </a-entity>
-            
-            <a-entity class="timeline-marker clickable" position="0.6 0.2 0.1" data-week="12">
-                <a-entity geometry="primitive: cylinder; radius: 0.1; height: 0.3" 
-                          material="color: #f44336">
-                </a-entity>
-                <a-entity text="value: 3 Months; color: white" position="0 -0.4 0"></a-entity>
-            </a-entity>
-            
-            <a-entity class="timeline-marker clickable" position="1.8 0.2 0.1" data-week="24">
-                <a-entity geometry="primitive: cylinder; radius: 0.1; height: 0.3" 
-                          material="color: #800000">
-                </a-entity>
-                <a-entity text="value: 6 Months; color: white" position="0 -0.4 0"></a-entity>
-            </a-entity>
-        </a-entity>
+        <div class="metrics-panel" id="metrics-panel" style="display: none;">
+            <h3>Performance Metrics</h3>
+            <div id="oxygen-level">Oxygen: 100%</div>
+            <div id="endurance-level">Endurance: 100%</div>
+            <div id="recovery-time">Recovery: 0s</div>
+            <div id="lung-capacity">Lung Capacity: 100%</div>
+        </div>
 
-        <!-- Performance Metrics Display -->
-        <a-entity id="performance-metrics" position="0 1.5 -2"
-                  text="value: Select a timeline point to see performance data; color: white; align: center">
-        </a-entity>
-
-        <!-- ===== CAMERA ===== -->
-        <a-camera position="0 0 4">
+        <!-- Camera -->
+        <a-camera position="0 1.6 0">
             <a-cursor></a-cursor>
         </a-camera>
 
     </a-scene>
 
     <script>
-        // ===== JAVASCRIPT: ALL INTERACTIVITY IN ONE SCRIPT =====
+        // Game State
+        let gameState = {
+            choice: null,
+            oxygen: 100,
+            endurance: 100,
+            recovery: 0,
+            lungCapacity: 100
+        };
 
-        // Lung Capacity Game Logic
-        AFRAME.registerComponent('lung-capacity', {
+        // DOM Elements
+        const instructionPanel = document.getElementById('instruction-panel');
+        const metricsPanel = document.getElementById('metrics-panel');
+        const oxygenLevel = document.getElementById('oxygen-level');
+        const enduranceLevel = document.getElementById('endurance-level');
+        const recoveryTime = document.getElementById('recovery-time');
+        const lungCapacity = document.getElementById('lung-capacity');
+        const capacityMeter = document.getElementById('capacity-meter');
+        const lungModel = document.getElementById('lung-model');
+
+        // Initialize A-Frame Components
+        AFRAME.registerComponent('choice-handler', {
             init: function() {
-                this.breathLevel = 0;
-                this.maxCapacity = 100;
-                this.isBreathing = false;
-                this.breathInterval = null;
-                
-                this.breathButton = document.querySelector('.breath-button');
-                this.vaperLung = document.querySelector('#vaper-lung .lung-model');
-                this.capacityMeter = document.querySelector('#vaper-lung .capacity-meter');
-                
-                this.setupEventListeners();
-            },
-            
-            setupEventListeners: function() {
-                const self = this;
-                
-                this.breathButton.addEventListener('mousedown', function() {
-                    self.startBreathing();
+                this.el.addEventListener('click', () => {
+                    const choice = this.el.id;
+                    handleChoice(choice);
                 });
-                
-                this.breathButton.addEventListener('mouseup', function() {
-                    self.stopBreathing();
-                });
-                
-                this.breathButton.addEventListener('mouseleave', function() {
-                    self.stopBreathing();
-                });
-            },
-            
-            startBreathing: function() {
-                this.isBreathing = true;
-                const self = this;
-                this.breathInterval = setInterval(function() {
-                    if (self.breathLevel < self.maxCapacity) {
-                        self.breathLevel += 2;
-                        self.updateLungDisplay();
-                    }
-                }, 100);
-            },
-            
-            stopBreathing: function() {
-                this.isBreathing = false;
-                if (this.breathInterval) {
-                    clearInterval(this.breathInterval);
-                }
-                
-                const self = this;
-                const deflateInterval = setInterval(function() {
-                    if (self.breathLevel > 0) {
-                        self.breathLevel -= 4;
-                        self.updateLungDisplay();
-                    } else {
-                        clearInterval(deflateInterval);
-                    }
-                }, 100);
-            },
-            
-            updateLungDisplay: function() {
-                const scale = 0.6 + (this.breathLevel / 100) * 0.4;
-                this.vaperLung.setAttribute('scale', {x: scale, y: scale, z: scale});
-                
-                let color = '#666';
-                if (this.breathLevel > 70) color = '#4CAF50';
-                else if (this.breathLevel > 40) color = '#FF9800';
-                else if (this.breathLevel > 0) color = '#f44336';
-                
-                this.vaperLung.setAttribute('material', 'color', color);
-                this.capacityMeter.setAttribute('text', 'value', `${this.breathLevel}% Capacity`);
             }
         });
 
-        // Timeline Interaction
-        AFRAME.registerComponent('timeline-interaction', {
-            init: function() {
-                this.markers = document.querySelectorAll('.timeline-marker');
-                this.currentWeek = 0;
-                const self = this;
+        // Add choice handlers
+        document.querySelectorAll('.choice').forEach(choice => {
+            choice.setAttribute('choice-handler', '');
+        });
+
+        function handleChoice(choice) {
+            gameState.choice = choice;
+            instructionPanel.style.display = 'none';
+            metricsPanel.style.display = 'block';
+
+            if (choice === 'vape-choice') {
+                // Negative effects
+                gameState.oxygen = 65;
+                gameState.endurance = 50;
+                gameState.recovery = 45;
+                gameState.lungCapacity = 40;
                 
-                this.markers.forEach(function(marker) {
-                    marker.addEventListener('click', function(evt) {
-                        const week = parseInt(evt.target.getAttribute('data-week'));
-                        self.showTimelineData(week);
-                    });
-                });
-            },
-            
-            showTimelineData: function(week) {
-                this.currentWeek = week;
-                const data = this.getPerformanceData(week);
-                this.updateMetricsDisplay(data);
-                this.updateLungDamageVisualization(week);
-            },
-            
-            getPerformanceData: function(week) {
-                const data = {
-                    0: { capacity: 100, endurance: 100, recovery: 100, status: "Peak Performance" },
-                    4: { capacity: 85, endurance: 80, recovery: 75, status: "Noticeable Decline" },
-                    12: { capacity: 65, endurance: 60, recovery: 50, status: "Significant Impact" },
-                    24: { capacity: 45, endurance: 40, recovery: 30, status: "Severe Limitation" }
-                };
-                return data[week] || data[0];
-            },
-            
-            updateMetricsDisplay: function(data) {
-                const metricsEl = document.querySelector('#performance-metrics');
-                if (metricsEl) {
-                    metricsEl.setAttribute('text', 'value', 
-                        `Lung Capacity: ${data.capacity}%\nEndurance: ${data.endurance}%\nRecovery: ${data.recovery}%\nStatus: ${data.status}`
-                    );
-                }
-            },
-            
-            updateLungDamageVisualization: function(week) {
-                const lungModel = document.querySelector('#vaper-lung .lung-model');
-                let damageColor = '#87CEEB';
+                // Visual changes
+                lungModel.setAttribute('color', '#8B4513');
+                lungModel.setAttribute('radius', '0.3');
+                capacityMeter.setAttribute('value', '40% Capacity');
+                capacityMeter.setAttribute('color', 'red');
                 
-                if (week >= 4) damageColor = '#A9A9A9';
-                if (week >= 12) damageColor = '#696969';
-                if (week >= 24) damageColor = '#36454F';
+                // Show lung comparison
+                document.querySelector('#lung-comparison').setAttribute('visible', 'true');
                 
-                lungModel.setAttribute('material', 'color', damageColor);
+                // Educational message
+                setTimeout(() => {
+                    showMessage("Vaping reduces oxygen intake by 35%\nEndurance drops by 50%\nRecovery time increases significantly");
+                }, 2000);
+                
+            } else {
+                // Positive effects
+                gameState.oxygen = 100;
+                gameState.endurance = 100;
+                gameState.recovery = 15;
+                gameState.lungCapacity = 100;
+                
+                // Show optimal performance
+                document.querySelector('#track-environment').setAttribute('visible', 'true');
+                
+                setTimeout(() => {
+                    showMessage("Healthy lungs = Peak performance!\nFast recovery\nMaximum endurance");
+                }, 2000);
             }
-        });
 
-        // Initialize everything when scene loads
-        document.querySelector('a-scene').addEventListener('loaded', function() {
-            document.querySelector('#lung-comparison').setAttribute('lung-capacity', '');
-            document.querySelector('#timeline').setAttribute('timeline-interaction', '');
-        });
+            updateMetrics();
+            startRaceSimulation();
+        }
 
+        function updateMetrics() {
+            oxygenLevel.textContent = `Oxygen: ${gameState.oxygen}%`;
+            enduranceLevel.textContent = `Endurance: ${gameState.endurance}%`;
+            recoveryTime.textContent = `Recovery: ${gameState.recovery}s`;
+            lungCapacity.textContent = `Lung Capacity: ${gameState.lungCapacity}%`;
+        }
+
+        function startRaceSimulation() {
+            const athlete = document.querySelector('#athlete');
+            const lungDisplay = document.querySelector('#lung-display sphere');
+            
+            if (gameState.choice === 'vape-choice') {
+                // Struggling animation
+                athlete.setAttribute('animation', {
+                    property: 'position',
+                    to: `0 1 ${5 - (gameState.endurance / 20)}`,
+                    dur: 8000,
+                    easing: 'easeInOut'
+                });
+                
+                // Labored breathing
+                lungDisplay.setAttribute('animation', {
+                    property: 'scale',
+                    to: '0.8 0.8 0.8',
+                    dur: '800',
+                    loop: true
+                });
+                
+            } else {
+                // Smooth running
+                athlete.setAttribute('animation', {
+                    property: 'position',
+                    to: '0 1 5',
+                    dur: 5000,
+                    easing: 'linear'
+                });
+                
+                // Normal breathing
+                lungDisplay.setAttribute('animation', {
+                    property: 'scale',
+                    to: '1.2 1.2 1.2',
+                    dur: '1200',
+                    loop: true
+                });
+            }
+        }
+
+        function showMessage(text) {
+            const messageEl = document.createElement('a-text');
+            messageEl.setAttribute('value', text);
+            messageEl.setAttribute('position', '0 2 -1.5');
+            messageEl.setAttribute('align', 'center');
+            messageEl.setAttribute('width', '4');
+            messageEl.setAttribute('color', gameState.choice === 'vape-choice' ? '#FF6B6B' : '#4ECDC4');
+            document.querySelector('a-scene').appendChild(messageEl);
+            
+            setTimeout(() => {
+                document.querySelector('a-scene').removeChild(messageEl);
+            }, 5000);
+        }
     </script>
 </body>
 </html>
