@@ -290,7 +290,7 @@
   <button id="vrToggle">Enter VR</button>
 
   <!-- Audio Elements - INCLUDES SAD CROWD -->
-  <audio id="introMusic" src="assets/audio/intro.mp3" preload="auto" autoplay loop></audio>
+  <audio id="introMusic" src="assets/audio/intro.mp3" preload="auto"></audio>
   <audio id="cheeringCrowd" src="assets/audio/reward_cheer.mp3" preload="auto"></audio>
   <audio id="sadCrowd" src="assets/audio/sad_crowd.mp3" preload="auto"></audio>
 
@@ -422,7 +422,7 @@
     continueBtn.style.display = 'block';
   }
 
-  // -------- AUDIO SYSTEM WITH BOTH POSITIVE AND NEGATIVE FEEDBACK ----------
+  // -------- AUDIO SYSTEM ----------
   function initializeAudio() {
     console.log("🎵 Initializing audio system...");
     
@@ -434,9 +434,9 @@
     
     // Try to play intro music immediately
     playIntroMusic();
-}
+  }
 
-function playIntroMusic() {
+  function playIntroMusic() {
     console.log("🎶 Attempting to play intro music...");
     
     introMusic.play().then(() => {
@@ -444,37 +444,10 @@ function playIntroMusic() {
     }).catch(error => {
         console.log("❌ Intro music autoplay blocked:", error);
     });
-}
-    
-    setTimeout(playIntro, 100);
-  }
-
-  function createSilentInteraction() {
-    const silentButton = document.createElement('button');
-    silentButton.style.cssText = 'position:absolute;opacity:0;width:1px;height:1px;z-index:-1;';
-    silentButton.textContent = 'silent';
-    document.body.appendChild(silentButton);
-    
-    setTimeout(() => {
-      silentButton.click();
-      console.log("🔄 Silent interaction triggered");
-      
-      setTimeout(() => {
-        introMusic.play().then(() => {
-          console.log("✅ Intro music playing after silent interaction");
-        }).catch(e => {
-          console.log("❌ Final audio failure, continuing without sound");
-        });
-      }, 100);
-      
-      setTimeout(() => {
-        document.body.removeChild(silentButton);
-      }, 1000);
-    }, 500);
   }
 
   // Play cheering crowd audio for positive choice (No Thanks)
-function playCheeringCrowd() {
+  function playCheeringCrowd() {
     console.log("🎉 Attempting to play reward_cheer.mp3...");
     
     // Reset and prepare audio
@@ -494,44 +467,33 @@ function playCheeringCrowd() {
             });
         }, 100);
     });
-}
+  }
 
   // Play sad crowd audio for negative choice
   function playSadCrowd() {
-    if (sadAudioPlayed) return;
+    console.log("😢 Attempting to play sad_crowd.mp3...");
     
-    console.log("😢 Playing sad_crowd.mp3...");
-    
+    // Reset and prepare audio
     sadCrowd.currentTime = 0;
     sadCrowd.volume = 0.8;
     
-    const playAttempt = sadCrowd.play();
-    
-    if (playAttempt !== undefined) {
-      playAttempt.then(() => {
+    // SIMPLIFIED - Just try to play directly
+    sadCrowd.play().then(() => {
         console.log("✅ Sad crowd audio playing successfully!");
         sadAudioPlayed = true;
-      }).catch(error => {
-        console.log("❌ Sad audio blocked, will play on next interaction");
-        
-        const enableAudio = () => {
-          console.log("🖱️ User interaction detected, playing sad audio");
-          sadCrowd.play().then(() => {
-            console.log("✅ Sad crowd audio playing after interaction!");
-            sadAudioPlayed = true;
-          }).catch(e => {
-            console.log("❌ Final sad audio failure");
-          });
-          document.removeEventListener('click', enableAudio);
-        };
-        
-        document.addEventListener('click', enableAudio, { once: true });
-      });
-    }
+    }).catch(error => {
+        console.log("❌ Sad audio failed:", error);
+        // One retry attempt
+        setTimeout(() => {
+            sadCrowd.play().catch(e => {
+                console.log("❌ Final sad audio failure");
+            });
+        }, 100);
+    });
   }
 
-  // Show consequence overlay based on choice - FIXED VERSION
-function showConsequence(isNegative) {
+  // Show consequence overlay based on choice
+  function showConsequence(isNegative) {
     console.log(`Showing consequence: ${isNegative ? 'Negative (Take a Puff)' : 'Positive (No Thanks)'}`);
     
     if (isNegative) {
@@ -543,7 +505,7 @@ function showConsequence(isNegative) {
         // Play CHEERING audio for POSITIVE choice (No Thanks)  
         setTimeout(playCheeringCrowd, 300);
     }
-}
+  }
 
   // Hide all consequence overlays
   function hideConsequences() {
@@ -769,6 +731,3 @@ function showConsequence(isNegative) {
 </script>
 </body>
 </html>
-
-
-
