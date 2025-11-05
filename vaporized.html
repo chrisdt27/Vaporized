@@ -446,28 +446,41 @@
     });
   }
 
-  // Play cheering crowd audio for positive choice (No Thanks)
-  function playCheeringCrowd() {
+// Play cheering crowd audio for positive choice (No Thanks)
+function playCheeringCrowd() {
     console.log("🎉 Attempting to play reward_cheer.mp3...");
     
-    // Reset and prepare audio
+    // Reset and prepare audio - ensure it's unmuted
     cheeringCrowd.currentTime = 0;
     cheeringCrowd.volume = 0.8;
+    cheeringCrowd.muted = false;
     
-    // SIMPLIFIED - Just try to play directly
-    cheeringCrowd.play().then(() => {
-        console.log("✅ Cheering audio playing successfully!");
-        cheeringAudioPlayed = true;
-    }).catch(error => {
-        console.log("❌ Cheering audio failed:", error);
-        // One retry attempt
-        setTimeout(() => {
-            cheeringCrowd.play().catch(e => {
-                console.log("❌ Final cheering audio failure");
-            });
-        }, 100);
-    });
-  }
+    // Force reload and play
+    cheeringCrowd.load();
+    
+    const playAudio = () => {
+        cheeringCrowd.play().then(() => {
+            console.log("✅ Cheering audio playing successfully!");
+            cheeringAudioPlayed = true;
+        }).catch(error => {
+            console.log("❌ Cheering audio failed:", error);
+            // Create a user interaction fallback
+            const enableAudio = () => {
+                console.log("🖱️ User interaction detected, retrying cheering audio");
+                cheeringCrowd.play().then(() => {
+                    console.log("✅ Cheering audio playing after interaction!");
+                }).catch(e => {
+                    console.log("❌ Final cheering audio failure");
+                });
+                document.removeEventListener('click', enableAudio);
+            };
+            document.addEventListener('click', enableAudio, { once: true });
+        });
+    };
+    
+    // Try to play immediately
+    playAudio();
+}
 
   // Play sad crowd audio for negative choice
   function playSadCrowd() {
@@ -731,4 +744,5 @@
 </script>
 </body>
 </html>
+
 
