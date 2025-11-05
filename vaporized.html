@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Vaporized — VR Theater Experience</title>
+<title>Vaporized — Intro</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <!-- WebXR Required Meta Tags -->
 <meta name="mobile-web-app-capable" content="yes">
@@ -14,9 +14,6 @@
 <link rel="preload" href="assets/audio/sad_crowd.mp3" as="audio">
 <link rel="preload" href="assets/00_intro_1080p24.mp4" as="video">
 <link rel="preload" href="assets/01_parking_offer_1080p24.mp4" as="video">
-
-<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-
 <style>
   :root {
     --bg:#000; --fg:#fff; --muted:#bbb;
@@ -24,7 +21,273 @@
   }
   html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Arial;overflow:hidden}
 
-  /* Loading Screen */
+  /* Stage */
+  #stage{position:fixed;inset:0;display:grid;place-items:center}
+  video{max-width:100vw;max-height:100vh;object-fit:cover;background:#000}
+
+  /* Fade overlay - Always visible but transparent by default */
+  #fade{pointer-events:none;position:fixed;inset:0;background:#000;opacity:1;transition:opacity .6s;z-index:10005}
+  #fade.hidden{opacity:0}
+
+  /* Choice screen — minimal copy */
+  #choice{position:fixed;inset:0;display:none;align-items:center;justify-content:center;gap:24px;background:rgba(0,0,0,.80);padding:20px;z-index:1000}
+  .card{min-width:280px;max-width:420px;border-radius:14px;padding:18px 20px;background:var(--card);border:1px solid var(--border);box-shadow:0 10px 24px rgba(0,0,0,.35)}
+  .card h2{margin:0 0 .6em 0;font-size:26px}
+  .btn{display:inline-block;padding:12px 18px;border-radius:10px;border:0;font-weight:800;cursor:pointer;transition:transform 0.2s, filter 0.2s}
+  .btn:hover{transform:scale(1.05);filter:brightness(1.2)}
+  .btn-primary{background:var(--accent);color:#002}
+  .btn-warn{background:var(--warn);color:#fff}
+
+  /* Error bar */
+  #err{position:fixed;left:0;right:0;bottom:0;background:rgba(200,0,0,.75);padding:6px 10px;font-size:12px;display:none;white-space:pre-wrap;z-index:1001}
+
+  /* Continue button for Classroom transition */
+  #continueBtn {
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+    padding: 15px 30px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    cursor: pointer;
+    display: none;
+    z-index: 1000;
+    transition: transform 0.2s, filter 0.2s;
+  }
+  #continueBtn:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+  }
+
+  /* Consequence Overlay Styles */
+  .consequence-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.85);
+    z-index: 1002;
+    padding: 20px;
+  }
+  
+  .consequence-card {
+    max-width: 600px;
+    width: 90%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+  }
+  
+  .consequence-card h2 {
+    font-size: 32px;
+    margin-bottom: 20px;
+    color: var(--accent);
+  }
+  
+  .consequence-card p {
+    font-size: 18px;
+    line-height: 1.6;
+    margin-bottom: 30px;
+    color: var(--fg);
+  }
+  
+  .consequence-btn {
+    padding: 15px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s, filter 0.2s;
+  }
+  
+  .consequence-btn:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+  }
+  
+  .negative-btn {
+    background: #ff4d4d;
+    color: white;
+  }
+  
+  .positive-btn {
+    background: #4CAF50;
+    color: white;
+  }
+
+  /* VR Mode Toggle */
+  #vrToggle {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.7);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1003;
+    font-family: system-ui;
+    display: none; /* Hidden until VR is available */
+  }
+  
+  #vrToggle:hover {
+    background: rgba(35, 194, 255, 0.2);
+  }
+
+  /* VR Experience Section */
+  .vr-section {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1004;
+    display: none;
+  }
+
+  .vr-launch-btn {
+    display: inline-block;
+    padding: 12px 20px;
+    background: var(--accent);
+    color: #002;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(76, 201, 240, 0.4);
+    border: none;
+    cursor: pointer;
+  }
+
+  .vr-launch-btn:hover {
+    background: #7bdff2;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(76, 201, 240, 0.6);
+  }
+
+  .vr-icon {
+    margin-right: 8px;
+    font-size: 1.2rem;
+  }
+
+  /* Star Wars Intro Styles */
+  #starwars-intro {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    color: #ffd700;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    perspective: 400px;
+    overflow: hidden;
+    display: block; /* Changed to display immediately */
+    z-index: 10000;
+  }
+
+  .crawl {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 1400px; /* Even wider for maximum screen coverage */
+    margin-left: -700px; /* Adjusted for new width */
+    text-align: center;
+    transform-origin: 50% 100%;
+    transform: rotateX(25deg);
+    animation: crawl 30s linear; /* Increased to 30 seconds for slower scrolling */
+  }
+
+  .title {
+    font-size: 108px; /* Increased by 20% from 90px */
+    font-weight: 900;
+    margin-bottom: 120px; /* Increased spacing */
+    text-transform: uppercase;
+    letter-spacing: 12px; /* Slightly increased letter spacing */
+    color: #ffd700;
+    text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700;
+  }
+
+  .subtitle {
+    font-size: 72px; /* Increased by 20% from 60px */
+    font-weight: 700;
+    margin-bottom: 96px; /* Increased spacing */
+    color: #ffd700;
+    text-shadow: 0 0 5px #ffd700;
+  }
+
+  .text-content {
+    font-size: 50px; /* Increased by 20% from 42px */
+    line-height: 1.4;
+    text-align: justify;
+    margin-bottom: 120px; /* Increased spacing */
+    width: 100%; /* Ensure full width */
+    padding: 0 80px; /* Even more padding for better margins */
+  }
+
+  .fade {
+    position: absolute;
+    width: 100%;
+    min-height: 60vh;
+    background: linear-gradient(0deg, transparent, black 90%);
+    top: 0;
+    z-index: 1;
+  }
+
+  /* Crawl animation - adjusted for 30 seconds (slower) */
+  @keyframes crawl {
+    0% {
+      top: 800px;
+      transform: rotateX(25deg) translateZ(0);
+    }
+    100% {
+      top: -2000px;
+      transform: rotateX(25deg) translateZ(-1000px);
+    }
+  }
+
+  /* Star field background */
+  .stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+
+  .star {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+  }
+
+  /* Skip button for intro */
+  #skipIntro {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.7);
+    color: #ffd700;
+    border: 1px solid #ffd700;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 10001;
+    font-family: system-ui;
+    transition: background 0.2s;
+  }
+
+  #skipIntro:hover {
+    background: rgba(255,215,0,0.2);
+  }
+
+  /* Loading indicator */
   #loading {
     position: fixed;
     inset: 0;
@@ -49,419 +312,556 @@
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
-
-  /* 2D Fallback Mode */
-  #fallback-mode {
-    position: fixed;
-    inset: 0;
-    display: none;
-    z-index: 10000;
-  }
-
-  /* VR Theater will be handled by A-Frame */
-  a-scene {
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-  }
 </style>
 </head>
 <body>
   <!-- Loading Screen -->
   <div id="loading">
     <div class="spinner"></div>
-    <div>Loading Vaporized VR Experience...</div>
+    <div>Loading Vaporized Experience...</div>
   </div>
 
-  <!-- 2D Fallback Mode (hidden initially) -->
-  <div id="fallback-mode">
-    <!-- Your existing 2D content would go here as fallback -->
+  <!-- VR Mode Toggle -->
+  <button id="vrToggle">Enter VR</button>
+
+  <!-- VR Experience Button -->
+  <div id="vrExperience" class="vr-section">
+    <a href="journeys/mouth_final.html" class="vr-launch-btn" id="vrLaunch">
+      <span class="vr-icon">👁️</span>
+      Enter VR Experience
+    </a>
   </div>
 
-  <!-- VR Theater Experience -->
-  <a-scene 
-      background="color: #000000"
-      renderer="colorManagement: true; antialias: true"
-      xr-mode-ui="enabled: true"
-      vr-mode-ui="enabled: true"
-  >
-    <!-- Assets -->
-    <a-assets>
-      <video id="introVideo" src="assets/00_intro_1080p24.mp4" preload="auto" crossorigin="anonymous"></video>
-      <video id="parkingVideo" src="assets/01_parking_offer_1080p24.mp4" preload="auto" crossorigin="anonymous"></video>
-      <audio id="introMusic" src="assets/audio/intro.mp3" preload="auto"></audio>
-      <audio id="cheeringCrowd" src="assets/audio/reward_cheer.mp3" preload="auto"></audio>
-      <audio id="sadCrowd" src="assets/audio/sad_crowd.mp3" preload="auto"></audio>
-    </a-assets>
+  <!-- Audio Elements - INCLUDES SAD CROWD -->
+  <audio id="introMusic" src="assets/audio/intro.mp3" preload="auto" autoplay loop></audio>
+  <audio id="cheeringCrowd" src="assets/audio/reward_cheer.mp3" preload="auto"></audio>
+  <audio id="sadCrowd" src="assets/audio/sad_crowd.mp3" preload="auto"></audio>
 
-    <!-- Camera Rig -->
-    <a-entity id="rig" position="0 1.6 0">
-      <a-entity id="cam" 
-                camera="near: 0.01; far: 1000; fov: 80"
-                look-controls="pointerLockEnabled: true"
-                wasd-controls="enabled: false"
-                position="0 0 0">
-      </a-entity>
-    </a-entity>
+  <!-- Star Wars Intro - Starts immediately -->
+  <div id="starwars-intro">
+    <div class="stars" id="stars"></div>
+    <div class="crawl" id="crawl">
+      <h1 class="title">VAPORIZED</h1>
+      <h2 class="subtitle">A Vape Breakers Production</h2>
+      <div class="text-content">
+        <p>In a world where vaping has become an epidemic among youth, one choice can change everything...</p>
+        <p>What begins as a simple puff sets off an incredible journey through the human body, revealing the hidden dangers that lurk within every vapor cloud.</p>
+        <p>From the mouth to the lungs, from the bloodstream to the brain - witness the path of destruction that unfolds with each inhalation.</p>
+        <p>This is not just a story about vaping. This is a journey into the consequences of a single decision.</p>
+        <p>The choice is yours. The journey awaits...</p>
+      </div>
+    </div>
+    <div class="fade"></div>
+    <button id="skipIntro">Skip Intro</button>
+  </div>
 
-    <!-- VR Theater Environment -->
-    <a-entity id="theater-environment" visible="true">
-      <!-- Giant Presentation Screen -->
-      <a-video id="presentation-screen"
-               position="0 3 -8"
-               width="16"
-               height="9"
-               src="#introVideo">
-      </a-video>
+  <div id="stage">
+    <!-- Start muted; we unmute after the user's tap -->
+    <video id="vid" playsinline preload="auto" muted></video>
+  </div>
 
-      <!-- Theater Environment -->
-      <a-entity position="0 -1 -8">
-        <!-- Stage -->
-        <a-box position="0 -0.5 0" width="20" height="1" depth="2" color="#333333"></a-box>
-        
-        <!-- Screen Frame -->
-        <a-box position="0 3 -7.9" width="16.2" height="9.2" depth="0.2" color="#111111"></a-box>
-        <a-box position="0 3 -7.8" width="16.4" height="9.4" depth="0.1" color="#444444"></a-box>
-      </a-entity>
+  <!-- Choice UI (minimal text) -->
+  <div id="choice">
+    <div class="card">
+      <h2>Take a Puff</h2>
+      <button id="btnVR" class="btn btn-primary">Take a Puff</button>
+    </div>
+    <div class="card">
+      <h2>No, Thanks</h2>
+      <button id="btnNo" class="btn btn-warn">No, Thanks</button>
+    </div>
+  </div>
 
-      <!-- Lighting -->
-      <a-entity light="type: ambient; intensity: 0.3; color: #FFFFFF"></a-entity>
-      <a-entity light="type: directional; intensity: 0.7; color: #FFFFFF" position="5 5 5"></a-entity>
-      <a-entity light="type: spot; intensity: 0.8; angle: 30; penumbra: 0.5; color: #FFFFFF" 
-               position="0 8 -4" target="#presentation-screen"></a-entity>
-    </a-entity>
+  <!-- Consequence Overlays -->
+  <div id="negativeConsequence" class="consequence-overlay">
+    <div class="consequence-card">
+      <h2>Immediate Impact</h2>
+      <p>Within seconds of inhaling, nicotine enters your bloodstream, increasing your heart rate and blood pressure. Your brain's reward system is activated, creating a craving for more.</p>
+      <p>This is just the beginning of the harmful effects vaping has on your body.</p>
+      <button id="negativeContinue" class="consequence-btn negative-btn">See How This Affects Your Body</button>
+    </div>
+  </div>
 
-    <!-- Star Wars Intro in VR -->
-    <a-entity id="starwars-intro" visible="false">
-      <a-entity position="0 0 -10" rotation="0 0 0">
-        <a-text value="VAPORIZED" 
-                position="0 4 0" 
-                align="center" 
-                color="#ffd700" 
-                scale="3 3 1"
-                animation="property: position; to: 0 8 -20; dur: 30000; easing: linear">
-        </a-text>
-        <a-text value="A Vape Breakers Production" 
-                position="0 2 0" 
-                align="center" 
-                color="#ffd700" 
-                scale="2 2 1"
-                animation="property: position; to: 0 6 -20; dur: 30000; easing: linear">
-        </a-text>
-        <a-text value="In a world where vaping has become an epidemic..." 
-                position="0 0 0" 
-                align="center" 
-                color="#ffffff" 
-                width="8"
-                scale="1.5 1.5 1"
-                animation="property: position; to: 0 4 -20; dur: 30000; easing: linear">
-        </a-text>
-      </a-entity>
-    </a-entity>
+  <div id="positiveConsequence" class="consequence-overlay">
+    <div class="consequence-card">
+      <h2>Smart Choice!</h2>
+      <p>By saying no to vaping, you've avoided immediate exposure to harmful chemicals like nicotine, formaldehyde, and acrolein that damage your lungs and cardiovascular system.</p>
+      <p>Your body thanks you for this healthy decision.</p>
+      <button id="positiveContinue" class="consequence-btn positive-btn">See What You Avoided</button>
+    </div>
+  </div>
 
-    <!-- Choice Interface in VR -->
-    <a-entity id="choice-interface" visible="false" position="0 2 -3">
-      <a-text value="Make Your Choice" 
-              position="0 2 0" 
-              align="center" 
-              color="#23c2ff" 
-              scale="2 2 1">
-      </a-text>
-      
-      <!-- Take a Puff Button -->
-      <a-box id="btn-vr" 
-             position="-2 0 0" 
-             width="2" 
-             height="0.5" 
-             depth="0.1" 
-             color="#23c2ff"
-             class="clickable">
-        <a-text value="Take a Puff" 
-                position="0 0 0.06" 
-                align="center" 
-                color="#000" 
-                scale="1.5 1.5 1">
-        </a-text>
-      </a-box>
-      
-      <!-- No Thanks Button -->
-      <a-box id="btn-no" 
-             position="2 0 0" 
-             width="2" 
-             height="0.5" 
-             depth="0.1" 
-             color="#6a2c2c"
-             class="clickable">
-        <a-text value="No, Thanks" 
-                position="0 0 0.06" 
-                align="center" 
-                color="#fff" 
-                scale="1.5 1.5 1">
-        </a-text>
-      </a-box>
-    </a-entity>
+  <!-- Continue to Classroom Button -->
+  <button id="continueBtn" onclick="goToClassroom()">Continue to Classroom</button>
 
-    <!-- Consequence Overlays in VR -->
-    <a-entity id="negative-consequence" visible="false" position="0 2 -2">
-      <a-plane position="0 0 0" width="6" height="4" color="#111111" opacity="0.9"></a-plane>
-      <a-text value="Immediate Impact" 
-              position="0 1.5 0.1" 
-              align="center" 
-              color="#ff6b6b" 
-              scale="1.5 1.5 1">
-      </a-text>
-      <a-text value="Nicotine enters your bloodstream..." 
-              position="0 0 0.1" 
-              align="center" 
-              width="5"
-              color="#ffffff" 
-              scale="1 1 1">
-      </a-text>
-      <a-box id="negative-continue" 
-             position="0 -1.5 0.1" 
-             width="2" 
-             height="0.4" 
-             depth="0.1" 
-             color="#ff4d4d"
-             class="clickable">
-        <a-text value="Continue" 
-                position="0 0 0.06" 
-                align="center" 
-                color="#fff" 
-                scale="1 1 1">
-        </a-text>
-      </a-box>
-    </a-entity>
-
-    <a-entity id="positive-consequence" visible="false" position="0 2 -2">
-      <a-plane position="0 0 0" width="6" height="4" color="#111111" opacity="0.9"></a-plane>
-      <a-text value="Smart Choice!" 
-              position="0 1.5 0.1" 
-              align="center" 
-              color="#4CAF50" 
-              scale="1.5 1.5 1">
-      </a-text>
-      <a-text value="You avoided harmful chemicals..." 
-              position="0 0 0.1" 
-              align="center" 
-              width="5"
-              color="#ffffff" 
-              scale="1 1 1">
-      </a-text>
-      <a-box id="positive-continue" 
-             position="0 -1.5 0.1" 
-             width="2" 
-             height="0.4" 
-             depth="0.1" 
-             color="#4CAF50"
-             class="clickable">
-        <a-text value="Continue" 
-                position="0 0 0.06" 
-                align="center" 
-                color="#fff" 
-                scale="1 1 1">
-        </a-text>
-      </a-box>
-    </a-entity>
-
-    <!-- Continue to Classroom Button -->
-    <a-entity id="continue-button" visible="false" position="0 1 -2">
-      <a-box id="btn-continue" 
-             position="0 0 0" 
-             width="3" 
-             height="0.5" 
-             depth="0.1" 
-             color="#4CAF50"
-             class="clickable">
-        <a-text value="Continue to Classroom" 
-                position="0 0 0.06" 
-                align="center" 
-                color="#fff" 
-                scale="1.2 1.2 1">
-        </a-text>
-      </a-box>
-    </a-entity>
-  </a-scene>
+  <!-- Fade overlay starts visible and becomes transparent after loading -->
+  <div id="fade" class="hidden"></div>
+  <div id="err"></div>
 
 <script>
-  // -------- Paths ----------
-  const TO_VR = 'journeys/mouth_final.html';
+  // -------- Paths (change only if your filenames differ) ----------
+  const INTRO      = 'assets/00_intro_1080p24.mp4';
+  const PARKING    = 'assets/01_parking_offer_1080p24.mp4';
+  const TO_VR      = 'journeys/mouth_final.html';
   const TO_CLASSROOM = '../vape_on_the_brain_vr/Classroom/classroom_scene.html';
 
-  // -------- State ----------
-  let currentScene = 0;
+  // -------- DOM ----------
+  const vid     = document.getElementById('vid');
+  const choice  = document.getElementById('choice');
+  const fadeEl  = document.getElementById('fade');
+  const errEl   = document.getElementById('err');
+  const btnVR   = document.getElementById('btnVR');
+  const btnNo   = document.getElementById('btnNo');
+  const continueBtn = document.getElementById('continueBtn');
+  const starwarsIntro = document.getElementById('starwars-intro');
+  const crawl = document.getElementById('crawl');
+  const skipIntro = document.getElementById('skipIntro');
+  const stars = document.getElementById('stars');
+  const introMusic = document.getElementById('introMusic');
+  const cheeringCrowd = document.getElementById('cheeringCrowd');
+  const sadCrowd = document.getElementById('sadCrowd');
+  const loading = document.getElementById('loading');
+  const vrToggle = document.getElementById('vrToggle');
+  const vrExperience = document.getElementById('vrExperience');
+  const vrLaunch = document.getElementById('vrLaunch');
+  const negativeConsequence = document.getElementById('negativeConsequence');
+  const positiveConsequence = document.getElementById('positiveConsequence');
+  const negativeContinue = document.getElementById('negativeContinue');
+  const positiveContinue = document.getElementById('positiveContinue');
+
+  // -------- WebXR/VR State ----------
+  let xrSession = null;
+  let isVRMode = false;
   let cheeringAudioPlayed = false;
   let sadAudioPlayed = false;
 
-  // -------- DOM Elements ----------
-  const loading = document.getElementById('loading');
-  const fallbackMode = document.getElementById('fallback-mode');
-
-  // -------- A-Frame Elements ----------
-  const scene = document.querySelector('a-scene');
-  const theater = document.getElementById('theater-environment');
-  const starwarsIntro = document.getElementById('starwars-intro');
-  const choiceInterface = document.getElementById('choice-interface');
-  const negativeConsequence = document.getElementById('negative-consequence');
-  const positiveConsequence = document.getElementById('positive-consequence');
-  const continueButton = document.getElementById('continue-button');
-  const presentationScreen = document.getElementById('presentation-screen');
-
-  // -------- Audio Elements ----------
-  const introMusic = document.querySelector('#introMusic');
-  const cheeringCrowd = document.querySelector('#cheeringCrowd');
-  const sadCrowd = document.querySelector('#sadCrowd');
-  const introVideo = document.querySelector('#introVideo');
-  const parkingVideo = document.querySelector('#parkingVideo');
-
-  // -------- Scene Sequence ----------
-  const scenes = [
-    { type: 'starwars', duration: 10000 },
-    { type: 'video', video: '#introVideo', duration: 45000 },
-    { type: 'video', video: '#parkingVideo', duration: 30000 },
-    { type: 'choice', duration: 0 } // Wait for user input
-  ];
-
-  // -------- Utility Functions ----------
+  // -------- Utils ----------
+  function showError(msg){ console.error(msg); errEl.textContent = msg; errEl.style.display='block'; }
+  
+  function fadeAndGo(url){ 
+    fadeEl.classList.remove('hidden');
+    setTimeout(() => {
+      try { 
+        location.href = url; 
+      } catch { 
+        window.location = url;
+      }
+    }, 600); 
+  }
+  
+  function showChoice(){ 
+    choice.style.display='flex'; 
+    btnVR?.focus(); 
+  }
+  
   function hideLoading() {
     loading.style.display = 'none';
+    fadeEl.classList.add('hidden');
   }
 
-  function showScene(sceneElement) {
-    // Hide all scenes
-    theater.setAttribute('visible', 'false');
-    starwarsIntro.setAttribute('visible', 'false');
-    choiceInterface.setAttribute('visible', 'false');
-    negativeConsequence.setAttribute('visible', 'false');
-    positiveConsequence.setAttribute('visible', 'false');
-    continueButton.setAttribute('visible', 'false');
+  function goToClassroom() {
+    fadeAndGo(TO_CLASSROOM);
+  }
+
+  function showContinueButton() {
+    continueBtn.style.display = 'block';
+  }
+
+  // -------- VR EXPERIENCE LINKING ----------
+  function showVRExperienceButton() {
+    vrExperience.style.display = 'block';
+  }
+
+  function updateVRExperienceLink(choiceType) {
+    // Update the VR experience link based on user choice
+    let vrUrl = TO_VR;
     
-    // Show requested scene
-    sceneElement.setAttribute('visible', 'true');
+    if (choiceType === 'positive') {
+      vrUrl += '?choice=positive';
+    } else if (choiceType === 'negative') {
+      vrUrl += '?choice=negative';
+    }
+    
+    vrLaunch.href = vrUrl;
+    showVRExperienceButton();
   }
 
-  function playAudio(audioElement) {
-    audioElement.play().catch(e => {
-      console.log('Audio play failed, will retry on interaction:', e);
-    });
+  // -------- AUDIO SYSTEM WITH BOTH POSITIVE AND NEGATIVE FEEDBACK ----------
+  function initializeAudio() {
+    console.log("🎵 Initializing audio system...");
+    
+    // Set up both audio elements
+    cheeringCrowd.volume = 0.8;
+    sadCrowd.volume = 0.8;
+    
+    // Preload both audio files
+    cheeringCrowd.load();
+    sadCrowd.load();
+    
+    // Force intro music to play
+    forceIntroMusicPlayback();
   }
 
-  function playVideo(videoAsset) {
-    const video = document.querySelector(videoAsset);
-    if (video) {
-      video.play();
-      return new Promise(resolve => {
-        video.onended = resolve;
-        setTimeout(resolve, scenes[currentScene].duration);
+  function forceIntroMusicPlayback() {
+    console.log("🔊 Forcing intro music playback...");
+    
+    introMusic.volume = 0.7;
+    
+    const playIntro = () => {
+      introMusic.play().then(() => {
+        console.log("✅ Intro music playing automatically");
+      }).catch(e => {
+        console.log("❌ Autoplay blocked, using fallback...");
+        createSilentInteraction();
+      });
+    };
+    
+    setTimeout(playIntro, 100);
+  }
+
+  function createSilentInteraction() {
+    const silentButton = document.createElement('button');
+    silentButton.style.cssText = 'position:absolute;opacity:0;width:1px;height:1px;z-index:-1;';
+    silentButton.textContent = 'silent';
+    document.body.appendChild(silentButton);
+    
+    setTimeout(() => {
+      silentButton.click();
+      console.log("🔄 Silent interaction triggered");
+      
+      setTimeout(() => {
+        introMusic.play().then(() => {
+          console.log("✅ Intro music playing after silent interaction");
+        }).catch(e => {
+          console.log("❌ Final audio failure, continuing without sound");
+        });
+      }, 100);
+      
+      setTimeout(() => {
+        document.body.removeChild(silentButton);
+      }, 1000);
+    }, 500);
+  }
+
+  // Play cheering crowd audio for positive choice
+  function playCheeringCrowd() {
+    if (cheeringAudioPlayed) return;
+    
+    console.log("🎉 Playing reward_cheer.mp3...");
+    
+    cheeringCrowd.currentTime = 0;
+    cheeringCrowd.volume = 0.8;
+    
+    const playAttempt = cheeringCrowd.play();
+    
+    if (playAttempt !== undefined) {
+      playAttempt.then(() => {
+        console.log("✅ Cheering audio playing successfully!");
+        cheeringAudioPlayed = true;
+      }).catch(error => {
+        console.log("❌ Cheering audio blocked, will play on next interaction");
+        
+        const enableAudio = () => {
+          console.log("🖱️ User interaction detected, playing cheering audio");
+          cheeringCrowd.play().then(() => {
+            console.log("✅ Cheering audio playing after interaction!");
+            cheeringAudioPlayed = true;
+          }).catch(e => {
+            console.log("❌ Final cheering audio failure");
+          });
+          document.removeEventListener('click', enableAudio);
+        };
+        
+        document.addEventListener('click', enableAudio, { once: true });
       });
     }
-    return Promise.resolve();
   }
 
-  // -------- Main Experience Flow ----------
-  async function startExperience() {
-    console.log("🚀 Starting VR Theater Experience");
+  // Play sad crowd audio for negative choice
+  function playSadCrowd() {
+    if (sadAudioPlayed) return;
     
-    // Wait for A-Frame to load
-    await new Promise(resolve => {
-      scene.addEventListener('loaded', resolve);
-    });
-
-    // Play intro music
-    playAudio(introMusic);
-
-    // Star Wars Intro
-    showScene(starwarsIntro);
-    await new Promise(resolve => setTimeout(resolve, 10000));
-
-    // Intro Video
-    showScene(theater);
-    presentationScreen.setAttribute('src', '#introVideo');
-    await playVideo('#introVideo');
-
-    // Parking Video
-    presentationScreen.setAttribute('src', '#parkingVideo');
-    await playVideo('#parkingVideo');
-
-    // Show Choice Interface
-    showScene(choiceInterface);
-  }
-
-  // -------- Event Handlers ----------
-  function setupEventHandlers() {
-    // VR Choice - Take a Puff
-    document.getElementById('btn-vr').addEventListener('click', () => {
-      showScene(negativeConsequence);
-      playAudio(sadCrowd);
-    });
-
-    // VR Choice - No Thanks
-    document.getElementById('btn-no').addEventListener('click', () => {
-      showScene(positiveConsequence);
-      playAudio(cheeringCrowd);
-    });
-
-    // Negative Consequence Continue
-    document.getElementById('negative-continue').addEventListener('click', () => {
-      window.location.href = TO_VR;
-    });
-
-    // Positive Consequence Continue
-    document.getElementById('positive-continue').addEventListener('click', () => {
-      window.location.href = TO_VR;
-    });
-
-    // Continue to Classroom
-    document.getElementById('btn-continue').addEventListener('click', () => {
-      window.location.href = TO_CLASSROOM;
-    });
-  }
-
-  // -------- Initialize ----------
-  async function init() {
-    try {
-      // Check if WebXR is supported
-      if (navigator.xr) {
-        const supported = await navigator.xr.isSessionSupported('immersive-vr');
-        if (!supported) {
-          // Fallback to 2D mode
-          fallbackMode.style.display = 'block';
-          scene.style.display = 'none';
-          // You would initialize your original 2D experience here
-          console.log("WebXR not supported, falling back to 2D");
-          hideLoading();
-          return;
-        }
-      }
-
-      // Start VR experience
-      setupEventHandlers();
-      await startExperience();
-      hideLoading();
-
-    } catch (error) {
-      console.error('Initialization failed:', error);
-      hideLoading();
-      // Fallback to 2D mode
-      fallbackMode.style.display = 'block';
-      scene.style.display = 'none';
+    console.log("😢 Playing sad_crowd.mp3...");
+    
+    sadCrowd.currentTime = 0;
+    sadCrowd.volume = 0.8;
+    
+    const playAttempt = sadCrowd.play();
+    
+    if (playAttempt !== undefined) {
+      playAttempt.then(() => {
+        console.log("✅ Sad crowd audio playing successfully!");
+        sadAudioPlayed = true;
+      }).catch(error => {
+        console.log("❌ Sad audio blocked, will play on next interaction");
+        
+        const enableAudio = () => {
+          console.log("🖱️ User interaction detected, playing sad audio");
+          sadCrowd.play().then(() => {
+            console.log("✅ Sad crowd audio playing after interaction!");
+            sadAudioPlayed = true;
+          }).catch(e => {
+            console.log("❌ Final sad audio failure");
+          });
+          document.removeEventListener('click', enableAudio);
+        };
+        
+        document.addEventListener('click', enableAudio, { once: true });
+      });
     }
   }
 
-  // Start when ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  // Show consequence overlay based on choice
+  function showConsequence(isNegative) {
+    if (isNegative) {
+      negativeConsequence.style.display = 'flex';
+      // Update VR link for negative choice
+      updateVRExperienceLink('negative');
+      // Play sad crowd for negative choice
+      setTimeout(playSadCrowd, 300);
+    } else {
+      positiveConsequence.style.display = 'flex';
+      // Update VR link for positive choice
+      updateVRExperienceLink('positive');
+      // Play cheering crowd for positive choice
+      setTimeout(playCheeringCrowd, 300);
+    }
   }
 
-  // Handle body journey completion
+  // Hide all consequence overlays
+  function hideConsequences() {
+    negativeConsequence.style.display = 'none';
+    positiveConsequence.style.display = 'none';
+    cheeringCrowd.pause();
+    cheeringCrowd.currentTime = 0;
+    sadCrowd.pause();
+    sadCrowd.currentTime = 0;
+    cheeringAudioPlayed = false;
+    sadAudioPlayed = false;
+  }
+
+  // Create starfield for Star Wars intro
+  function createStarfield() {
+    for (let i = 0; i < 200; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.width = Math.random() * 3 + 'px';
+      star.style.height = star.style.width;
+      star.style.left = Math.random() * 100 + '%';
+      star.style.top = Math.random() * 100 + '%';
+      star.style.opacity = Math.random() * 0.7 + 0.3;
+      stars.appendChild(star);
+    }
+  }
+
+  // Check for WebXR support and initialize VR toggle
+  async function checkXRSupport() {
+    if (navigator.xr) {
+      try {
+        const supported = await navigator.xr.isSessionSupported('immersive-vr');
+        if (supported) {
+          vrToggle.style.display = 'block';
+          return true;
+        }
+      } catch (e) {
+        console.warn('WebXR not supported:', e);
+      }
+    }
+    return false;
+  }
+
+  // Enter VR mode
+  async function enterVR() {
+    if (!navigator.xr) {
+      showError('WebXR not supported in this browser');
+      return;
+    }
+
+    try {
+      xrSession = await navigator.xr.requestSession('immersive-vr', {
+        optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']
+      });
+      
+      isVRMode = true;
+      vrToggle.textContent = 'Exit VR';
+      xrSession.addEventListener('end', onXRSessionEnded);
+      showError('VR Mode Active - Full implementation requires WebGL rendering');
+      
+    } catch (e) {
+      showError('Failed to enter VR: ' + e.message);
+    }
+  }
+
+  // Exit VR mode
+  function exitVR() {
+    if (xrSession) {
+      xrSession.end();
+    }
+  }
+
+  // Handle XR session end
+  function onXRSessionEnded() {
+    xrSession = null;
+    isVRMode = false;
+    vrToggle.textContent = 'Enter VR';
+    hideLoading();
+  }
+
+  // Play Star Wars intro
+  function playStarWarsIntro() {
+    return new Promise((resolve) => {
+      const skipHandler = () => {
+        fadeEl.classList.remove('hidden');
+        setTimeout(() => {
+          starwarsIntro.style.display = 'none';
+          introMusic.pause();
+          fadeEl.classList.add('hidden');
+          resolve();
+        }, 300);
+      };
+      
+      skipIntro.addEventListener('click', skipHandler, { once: true });
+      
+      setTimeout(() => {
+        if (starwarsIntro.style.display !== 'none') {
+          skipHandler();
+        }
+      }, 30000);
+    });
+  }
+
+  // Play a src and resolve when it ends; guard timer for bad metadata
+  function playUntilEnd(src){
+    return new Promise((resolve, reject)=>{
+      let guard=null, ended=false;
+
+      vid.src = src;
+      vid.loop = false;
+      vid.onerror = ()=>reject(new Error('Video failed to load: ' + src));
+
+      const start = ()=>{
+        const dur = Number.isFinite(vid.duration) && vid.duration>0 ? vid.duration : 75;
+        guard = setTimeout(()=>{ if(!ended){ cleanup(); resolve(); } }, (dur+2)*1000);
+
+        vid.play()
+          .then(()=>{ vid.onended = ()=>{ ended=true; cleanup(); resolve(); }; })
+          .catch(err=>{ cleanup(); reject(err); });
+      };
+
+      const cleanup = ()=>{ clearTimeout(guard); vid.onended=null; vid.oncanplay=null; vid.onloadedmetadata=null; };
+      vid.onloadedmetadata = start;
+      vid.oncanplay = start;
+      vid.load();
+    });
+  }
+
+  async function startSequenceWithAudio(){
+    vid.muted = false;
+    await playStarWarsIntro();
+    await playUntilEnd(INTRO);
+    await playUntilEnd(PARKING);
+    showChoice();
+  }
+
+  // Initialize the application
+  async function init() {
+    try {
+      initializeAudio();
+      await checkXRSupport();
+      createStarfield();
+      setTimeout(hideLoading, 1000);
+      await startSequenceWithAudio();
+    } catch(e) {
+      showError(e.message || String(e));
+      hideLoading();
+      showChoice();
+    }
+  }
+
+  // Initialize when page loads
+  window.addEventListener('load', init);
+
+  // Event Listeners
+  btnVR.addEventListener('click',  ()=> {
+    showConsequence(true);
+  });
+  
+  btnNo.addEventListener('click',  ()=> {
+    showConsequence(false);
+  });
+
+  negativeContinue.addEventListener('click', () => {
+    hideConsequences();
+    fadeAndGo(TO_VR);
+    setTimeout(showContinueButton, 45000);
+  });
+
+  positiveContinue.addEventListener('click', () => {
+    hideConsequences();
+    fadeAndGo(TO_VR);
+    setTimeout(showContinueButton, 45000);
+  });
+
+  // VR Toggle
+  vrToggle.addEventListener('click', () => {
+    if (isVRMode) {
+      exitVR();
+    } else {
+      enterVR();
+    }
+  });
+
+  // VR Experience Button
+  vrLaunch.addEventListener('click', (e) => {
+    e.preventDefault();
+    console.log('Launching VR experience with choice parameter');
+    fadeAndGo(vrLaunch.href);
+  });
+
+  // Keyboard shortcuts
+  window.addEventListener('keydown', (e)=>{
+    if(e.key==='1') {
+      showConsequence(true);
+    }
+    if(e.key==='2') {
+      showConsequence(false);
+    }
+    if(e.key==='3') goToClassroom();
+    if(e.key==='Escape' && starwarsIntro.style.display === 'block') {
+      starwarsIntro.style.display = 'none';
+      introMusic.pause();
+    }
+    if(e.key === 'v' || e.key === 'V') {
+      if (vrToggle.style.display !== 'none') {
+        if (isVRMode) {
+          exitVR();
+        } else {
+          enterVR();
+        }
+      }
+    }
+    if(e.key === 'r' || e.key === 'R') {
+      // Quick access to VR experience
+      if (vrExperience.style.display !== 'none') {
+        vrLaunch.click();
+      }
+    }
+  });
+
+  // Auto-detect if we're returning from body journey and show continue button
   window.addEventListener('pageshow', function(event) {
     if (sessionStorage.getItem('bodyJourneyCompleted')) {
-      continueButton.setAttribute('visible', 'true');
+      showContinueButton();
       sessionStorage.removeItem('bodyJourneyCompleted');
     }
   });
+
+  // Handle device orientation for mobile VR
+  window.addEventListener('deviceorientation', function(e) {
+    if (isVRMode) {
+      console.log('Device orientation:', e.alpha, e.beta, e.gamma);
+    }
+  }, true);
 </script>
 </body>
 </html>
