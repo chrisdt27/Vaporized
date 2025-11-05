@@ -1,17 +1,533 @@
-<!-- Alternative: 180° 3D Experience -->
-<a-scene vr-mode-ui="enabled: true">
-    <!-- Large curved screen with your 2D video -->
-    <a-cylinder id="video-screen" src="assets/track-runner-struggle.mp4" 
-                theta-length="180" radius="10" height="6" 
-                position="0 2 -9" rotation="0 90 0" autoplay="true">
-    </a-cylinder>
-    
-    <!-- You're standing on the track -->
-    <a-circle id="track-floor" radius="20" rotation="-90 0 0" color="#8B4513" position="0 0 0"></a-circle>
-    
-    <!-- 3D elements around you -->
-    <a-entity id="track-elements">
-        <a-cylinder color="#4682B4" radius="0.3" height="1.8" position="-2 0.9 5"></a-cylinder>
-        <a-cylinder color="#4682B4" radius="0.3" height="1.8" position="3 0.9 3"></a-cylinder>
-    </a-entity>
-</a-scene>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Immersive Track Runner - 360° Stadium Experience</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-environment-component@1.3.0/dist/aframe-environment-component.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        .ui-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+            max-width: 300px;
+        }
+        .health-bar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+        .health-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .control-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <a-scene 
+        vr-mode-ui="enabled: true"
+        device-orientation-permission-ui="enabled: true"
+        background="color: #87CEEB"
+        environment="preset: forest; lighting: point; shadow: true"
+    >
+
+        <!-- 360° STADIUM ENVIRONMENT -->
+        <a-entity id="stadium-environment">
+            <!-- Stadium Structure -->
+            <a-cylinder id="stadium-outer" color="#C0C0C0" radius="200" height="40" 
+                        position="0 20 0" open-ended="true" theta-length="360" side="double">
+            </a-cylinder>
+            
+            <!-- Stadium Seats -->
+            <a-torus id="lower-stands" color="#8B0000" arc="360" radius="180" radius-tubular="8" 
+                     rotation="0 0 0" position="0 5 0" segments-tubular="16">
+            </a-torus>
+            <a-torus id="upper-stands" color="#B22222" arc="360" radius="190" radius-tubular="6" 
+                     rotation="0 0 0" position="0 15 0" segments-tubular="16">
+            </a-torus>
+            
+            <!-- Track -->
+            <a-ring id="track-surface" color="#8B4513" radius-inner="90" radius-outer="110" 
+                    rotation="-90 0 0" position="0 0.1 0" segments-phi="64">
+            </a-ring>
+            
+            <!-- Track Lanes -->
+            <a-ring id="lane-1" color="#FFFFFF" radius-inner="91" radius-outer="91.5" 
+                    rotation="-90 0 0" position="0 0.11 0" opacity="0.8">
+            </a-ring>
+            <a-ring id="lane-2" color="#FFFFFF" radius-inner="95" radius-outer="95.5" 
+                    rotation="-90 0 0" position="0 0.11 0" opacity="0.8">
+            </a-ring>
+            <a-ring id="lane-3" color="#FFFFFF" radius-inner="99" radius-outer="99.5" 
+                    rotation="-90 0 0" position="0 0.11 0" opacity="0.8">
+            </a-ring>
+            <a-ring id="lane-4" color="#FFFFFF" radius-inner="103" radius-outer="103.5" 
+                    rotation="-90 0 0" position="0 0.11 0" opacity="0.8">
+            </a-ring>
+            <a-ring id="lane-5" color="#FFFFFF" radius-inner="107" radius-outer="107.5" 
+                    rotation="-90 0 0" position="0 0.11 0" opacity="0.8">
+            </a-ring>
+            
+            <!-- Inner Grass Field -->
+            <a-circle id="grass-field" radius="90" rotation="-90 0 0" position="0 0.05 0" 
+                      color="#228B22" segments="64">
+            </a-circle>
+            
+            <!-- Finish Line -->
+            <a-box id="finish-line" color="#FFD700" width="20" height="0.5" depth="1" 
+                   position="0 0.2 110" rotation="0 0 0">
+            </a-box>
+            <a-text id="finish-text" value="FINISH" position="0 3 110" color="black" 
+                    align="center" scale="3 3 3">
+            </a-text>
+            
+            <!-- Starting Line -->
+            <a-box id="start-line" color="#FFFFFF" width="20" height="0.5" depth="1" 
+                   position="0 0.2 -110" rotation="0 0 0">
+            </a-box>
+            <a-text id="start-text" value="START" position="0 3 -110" color="black" 
+                    align="center" scale="3 3 3">
+            </a-text>
+            
+            <!-- Stadium Lights -->
+            <a-entity id="stadium-lights">
+                <a-sphere color="#FFFFE0" radius="3" position="-150 35 -150" 
+                         light="type: point; intensity: 0.8; distance: 300">
+                </a-sphere>
+                <a-sphere color="#FFFFE0" radius="3" position="150 35 -150" 
+                         light="type: point; intensity: 0.8; distance: 300">
+                </a-sphere>
+                <a-sphere color="#FFFFE0" radius="3" position="-150 35 150" 
+                         light="type: point; intensity: 0.8; distance: 300">
+                </a-sphere>
+                <a-sphere color="#FFFFE0" radius="3" position="150 35 150" 
+                         light="type: point; intensity: 0.8; distance: 300">
+                </a-sphere>
+            </a-entity>
+        </a-entity>
+
+        <!-- FIRST-PERSON RUNNER BODY -->
+        <a-entity id="first-person-body">
+            <!-- Head (camera) -->
+            <a-entity id="head" position="0 1.6 0">
+                <!-- Breathing bobbing animation -->
+                <a-animation attribute="position" dur="1500" from="0 1.6 0" to="0 1.59 0" 
+                            direction="alternate" repeat="indefinite" easing="easeInOutSine">
+                </a-animation>
+            </a-entity>
+            
+            <!-- Arms (visible in first-person) -->
+            <a-entity id="left-arm" position="-0.3 1.3 -0.5">
+                <a-box color="#4682B4" width="0.15" height="0.8" depth="0.1" 
+                      animation="property: rotation; to: -60 0 0; dir: alternate; loop: true; dur: 600">
+                </a-box>
+            </a-entity>
+            <a-entity id="right-arm" position="0.3 1.3 -0.5">
+                <a-box color="#4682B4" width="0.15" height="0.8" depth="0.1" 
+                      animation="property: rotation; to: 60 0 0; dir: alternate; loop: true; dur: 600">
+                </a-box>
+            </a-entity>
+            
+            <!-- Legs (visible when looking down) -->
+            <a-entity id="legs" position="0 0.8 0">
+                <a-box color="#2E8B57" width="0.2" height="1.2" depth="0.15" position="-0.1 0 0">
+                    <a-animation attribute="rotation" dur="600" from="30 0 0" to="-30 0 0" 
+                                direction="alternate" repeat="indefinite">
+                    </a-animation>
+                </a-box>
+                <a-box color="#2E8B57" width="0.2" height="1.2" depth="0.15" position="0.1 0 0">
+                    <a-animation attribute="rotation" dur="600" from="-30 0 0" to="30 0 0" 
+                                direction="alternate" repeat="indefinite">
+                    </a-animation>
+                </a-box>
+            </a-entity>
+        </a-entity>
+
+        <!-- HEALTH & PERFORMANCE METRICS -->
+        <a-entity id="health-metrics" position="0 2.5 -1">
+            <a-plane color="rgba(0,0,0,0.8)" width="2.5" height="1.8" position="0 0 0"></a-plane>
+            <a-text value="RUNNER VITALS" position="0 0.8 0.01" color="white" align="center" scale="1.2 1.2 1.2"></a-text>
+            <a-text value="SPEED: 0 km/h" id="speed-display" position="-1 0.3 0.01" color="#4CAF50" align="left"></a-text>
+            <a-text value="OXYGEN: 100%" id="oxygen-display" position="-1 0 0.01" color="#87CEEB" align="left"></a-text>
+            <a-text value="ENDURANCE: 100%" id="endurance-display" position="-1 -0.3 0.01" color="#FFD700" align="left"></a-text>
+            <a-text value="DISTANCE: 0m" id="distance-display" position="-1 -0.6 0.01" color="#FF6B6B" align="left"></a-text>
+        </a-entity>
+
+        <!-- VAPE EFFECTS VISUALIZATION -->
+        <a-entity id="vape-effects" visible="false">
+            <!-- Breathing difficulty particles -->
+            <a-entity id="breath-particles" particle-system="preset: cloud; color: #696969; particleCount: 50"></a-entity>
+            
+            <!-- Blur effect for vision impairment -->
+            <a-entity id="vision-blur" fog="type: exponential; color: #AAAAAA; density: 0.001"></a-entity>
+        </a-entity>
+
+        <!-- OCULUS CONTROLS -->
+        <a-entity id="vr-controls">
+            <a-entity laser-controls="hand: right" line="color: blue"></a-entity>
+            <a-entity laser-controls="hand: left" line="color: blue"></a-entity>
+            <a-entity hand-controls="hand: left"></a-entity>
+            <a-entity hand-controls="hand: right"></a-entity>
+        </a-entity>
+
+        <!-- CAMERA RIG -->
+        <a-entity id="runner-rig" movement-controls="controls: gamepad, keyboard" position="0 1.6 -100">
+            <a-entity camera look-controls wasd-controls="acceleration: 100"></a-entity>
+        </a-entity>
+
+        <!-- AUDIO ENVIRONMENT -->
+        <a-entity id="audio-environment">
+            <a-sound src="assets/crowd-ambient.mp3" autoplay="true" loop="true" volume="0.3" position="0 0 0"></a-sound>
+            <a-sound src="assets/breathing-normal.mp3" id="breathing-audio" loop="true" volume="0.5"></a-sound>
+            <a-sound src="assets/footsteps-track.mp3" id="footstep-audio" loop="true" volume="0.3"></a-sound>
+        </a-entity>
+
+        <!-- INTERACTIVE BUTTONS -->
+        <a-entity id="control-buttons" position="0 1.5 -1.5">
+            <a-box class="control-btn" id="start-run" color="#4CAF50" width="0.8" height="0.3" depth="0.1" position="-1 0 0"
+                  data-action="start" event-set__mouseenter="scale: 1.1 1.1 1.1" event-set__mouseleave="scale: 1 1 1">
+                <a-text value="START RUN" position="0 0 0.06" color="white" align="center" scale="1.5 1.5 1.5"></a-text>
+            </a-box>
+            
+            <a-box class="control-btn" id="vape-effect" color="#FF6B6B" width="0.8" height="0.3" depth="0.1" position="1 0 0"
+                  data-action="vape" event-set__mouseenter="scale: 1.1 1.1 1.1" event-set__mouseleave="scale: 1 1 1">
+                <a-text value="VAPE EFFECT" position="0 0 0.06" color="white" align="center" scale="1.2 1.2 1.2"></a-text>
+            </a-box>
+        </a-entity>
+
+    </a-scene>
+
+    <!-- UI PANEL -->
+    <div class="ui-panel">
+        <h3>🏃‍♂️ Immersive Track Experience</h3>
+        <div class="metric">
+            <strong>Current Speed:</strong> <span id="speed-ui">0 km/h</span>
+        </div>
+        <div class="health-bar">
+            <div class="health-fill" id="oxygen-bar" style="width: 100%; background: #87CEEB;"></div>
+        </div>
+        <div style="font-size: 12px; margin-bottom: 10px;">Oxygen Level</div>
+        
+        <div class="health-bar">
+            <div class="health-fill" id="endurance-bar" style="width: 100%; background: #4CAF50;"></div>
+        </div>
+        <div style="font-size: 12px; margin-bottom: 10px;">Endurance</div>
+        
+        <div class="metric">
+            <strong>Lap Progress:</strong> <span id="lap-ui">0%</span>
+        </div>
+        <div class="metric">
+            <strong>Status:</strong> <span id="status-ui">Ready to Run</span>
+        </div>
+    </div>
+
+    <div class="control-hint" id="control-hint">
+        🎮 Use controller buttons or keyboard to run | Look around 360° to see full stadium
+    </div>
+
+    <script>
+        // Immersive Running Experience
+        const runner = {
+            isRunning: false,
+            speed: 0,
+            maxSpeed: 25, // km/h
+            position: { x: 0, y: 1.6, z: -100 },
+            rotation: 0,
+            lapProgress: 0,
+            stats: {
+                oxygen: 100,
+                endurance: 100,
+                distance: 0
+            },
+            vapeEffects: false
+        };
+
+        // Initialize A-Frame Components
+        AFRAME.registerComponent('running-mechanics', {
+            init: function() {
+                this.rig = document.querySelector('#runner-rig');
+                this.camera = document.querySelector('[camera]');
+                this.breathingAudio = document.querySelector('#breathing-audio');
+                this.footstepAudio = document.querySelector('#footstep-audio');
+                
+                // Set initial position
+                this.rig.setAttribute('position', '0 1.6 -100');
+            },
+            tick: function(time, delta) {
+                if (!runner.isRunning) return;
+                
+                // Calculate movement
+                const speedMultiplier = runner.vapeEffects ? 0.6 : 1.0;
+                const currentSpeed = runner.speed * speedMultiplier;
+                const distanceThisFrame = (currentSpeed / 3.6) * (delta / 1000); // Convert km/h to m/s
+                
+                // Update position on circular track
+                runner.rotation += (distanceThisFrame / 100) * (Math.PI / 180) * 10;
+                runner.position.x = Math.sin(runner.rotation) * 100;
+                runner.position.z = Math.cos(runner.rotation) * 100;
+                
+                // Update rig position and rotation
+                this.rig.setAttribute('position', {
+                    x: runner.position.x,
+                    y: runner.position.y,
+                    z: runner.position.z
+                });
+                
+                // Face direction of travel
+                const lookAngle = -runner.rotation * (180 / Math.PI) + 90;
+                this.rig.setAttribute('rotation', { x: 0, y: lookAngle, z: 0 });
+                
+                // Update stats
+                this.updateRunnerStats(distanceThisFrame);
+                this.updateAudio();
+                this.updateVisualEffects();
+            },
+            updateRunnerStats: function(distance) {
+                runner.stats.distance += distance;
+                
+                // Progressive stat deterioration
+                if (runner.vapeEffects) {
+                    runner.stats.oxygen = Math.max(40, runner.stats.oxygen - 0.05);
+                    runner.stats.endurance = Math.max(30, runner.stats.endurance - 0.08);
+                } else {
+                    runner.stats.oxygen = Math.max(80, runner.stats.oxygen - 0.01);
+                    runner.stats.endurance = Math.max(70, runner.stats.endurance - 0.02);
+                }
+                
+                // Calculate lap progress (400m track)
+                runner.lapProgress = (runner.stats.distance % 400) / 400 * 100;
+                
+                this.updateDisplays();
+            },
+            updateAudio: function() {
+                // Breathing intensity based on speed and oxygen
+                const breathingRate = 1.0 - (runner.stats.oxygen / 200);
+                this.breathingAudio.setAttribute('volume', 0.3 + (runner.speed / runner.maxSpeed) * 0.4);
+                
+                // Footstep rate based on speed
+                const footstepRate = 0.5 + (runner.speed / runner.maxSpeed) * 0.5;
+                this.footstepAudio.setAttribute('volume', 0.2 + (runner.speed / runner.maxSpeed) * 0.3);
+            },
+            updateVisualEffects: function() {
+                // Update arm and leg animation speed based on running speed
+                const animationSpeed = 600 - (runner.speed / runner.maxSpeed) * 400;
+                document.querySelectorAll('#left-arm animation, #right-arm animation, #legs animation').forEach(anim => {
+                    anim.setAttribute('dur', animationSpeed);
+                });
+                
+                // Vape effects
+                if (runner.vapeEffects) {
+                    const vapeEffects = document.querySelector('#vape-effects');
+                    vapeEffects.setAttribute('visible', 'true');
+                    
+                    // Increase particle count as oxygen decreases
+                    const particles = document.querySelector('#breath-particles');
+                    particles.setAttribute('particle-system', `particleCount: ${200 - runner.stats.oxygen * 2}`);
+                }
+            },
+            updateDisplays: function() {
+                // 3D Text displays
+                document.querySelector('#speed-display').setAttribute('value', 
+                    `SPEED: ${Math.round(runner.speed)} km/h`);
+                document.querySelector('#oxygen-display').setAttribute('value', 
+                    `OXYGEN: ${Math.round(runner.stats.oxygen)}%`);
+                document.querySelector('#endurance-display').setAttribute('value', 
+                    `ENDURANCE: ${Math.round(runner.stats.endurance)}%`);
+                document.querySelector('#distance-display').setAttribute('value', 
+                    `DISTANCE: ${Math.round(runner.stats.distance)}m`);
+                
+                // UI displays
+                document.querySelector('#speed-ui').textContent = `${Math.round(runner.speed)} km/h`;
+                document.querySelector('#oxygen-bar').style.width = `${runner.stats.oxygen}%`;
+                document.querySelector('#endurance-bar').style.width = `${runner.stats.endurance}%`;
+                document.querySelector('#lap-ui').textContent = `${Math.round(runner.lapProgress)}%`;
+                document.querySelector('#status-ui').textContent = runner.isRunning ? 
+                    (runner.vapeEffects ? 'Struggling with Vape Effects' : 'Running Strong') : 'Ready to Run';
+                
+                // Color coding
+                if (runner.stats.oxygen < 50) {
+                    document.querySelector('#oxygen-display').setAttribute('color', '#FF4444');
+                }
+            }
+        });
+
+        // Interactive Button Component
+        AFRAME.registerComponent('interactive-control', {
+            init: function() {
+                this.el.addEventListener('click', () => {
+                    const action = this.el.getAttribute('data-action');
+                    this.handleAction(action);
+                });
+            },
+            handleAction: function(action) {
+                switch(action) {
+                    case 'start':
+                        toggleRunning();
+                        break;
+                    case 'vape':
+                        toggleVapeEffects();
+                        break;
+                }
+            }
+        });
+
+        // Add components
+        document.querySelector('a-scene').setAttribute('running-mechanics', '');
+        document.querySelectorAll('.control-btn').forEach(btn => {
+            btn.setAttribute('interactive-control', '');
+        });
+
+        // Running Controls
+        function toggleRunning() {
+            runner.isRunning = !runner.isRunning;
+            if (runner.isRunning) {
+                // Accelerate to running speed
+                accelerateRunner();
+                document.querySelector('#start-run').setAttribute('color', '#F44336');
+                document.querySelector('#start-run text').setAttribute('value', 'STOP RUN');
+            } else {
+                // Decelerate to stop
+                decelerateRunner();
+                document.querySelector('#start-run').setAttribute('color', '#4CAF50');
+                document.querySelector('#start-run text').setAttribute('value', 'START RUN');
+            }
+        }
+
+        function toggleVapeEffects() {
+            runner.vapeEffects = !runner.vapeEffects;
+            const vapeBtn = document.querySelector('#vape-effect');
+            
+            if (runner.vapeEffects) {
+                vapeBtn.setAttribute('color', '#8B4513');
+                showMessage("Vape Effects ON: Reduced oxygen, slower speed, struggling");
+                
+                // Immediate stat penalty
+                runner.stats.oxygen *= 0.7;
+                runner.stats.endurance *= 0.6;
+            } else {
+                vapeBtn.setAttribute('color', '#FF6B6B');
+                showMessage("Vape Effects OFF: Normal performance restored");
+            }
+        }
+
+        function accelerateRunner() {
+            const acceleration = setInterval(() => {
+                if (runner.isRunning && runner.speed < runner.maxSpeed) {
+                    runner.speed += 1;
+                } else {
+                    clearInterval(acceleration);
+                }
+            }, 100);
+        }
+
+        function decelerateRunner() {
+            const deceleration = setInterval(() => {
+                if (!runner.isRunning && runner.speed > 0) {
+                    runner.speed -= 2;
+                } else if (runner.speed <= 0) {
+                    runner.speed = 0;
+                    clearInterval(deceleration);
+                }
+            }, 50);
+        }
+
+        // Oculus Controller Integration
+        AFRAME.registerComponent('oculus-controls', {
+            init: function() {
+                this.el.addEventListener('gripdown', () => {
+                    // Start running when grip is pressed
+                    if (!runner.isRunning) {
+                        toggleRunning();
+                    }
+                });
+                
+                this.el.addEventListener('triggerdown', () => {
+                    // Sprint when trigger is pressed
+                    runner.maxSpeed = 30;
+                });
+                
+                this.el.addEventListener('triggerup', () => {
+                    // Return to normal speed
+                    runner.maxSpeed = 25;
+                });
+            }
+        });
+
+        // Add Oculus controls to hands
+        document.querySelectorAll('[hand-controls]').forEach(hand => {
+            hand.setAttribute('oculus-controls', '');
+        });
+
+        // Keyboard controls for testing
+        document.addEventListener('keydown', (e) => {
+            switch(e.code) {
+                case 'Space':
+                    toggleRunning();
+                    break;
+                case 'KeyV':
+                    toggleVapeEffects();
+                    break;
+                case 'ShiftLeft':
+                    runner.maxSpeed = 30; // Sprint
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ShiftLeft') {
+                runner.maxSpeed = 25; // Normal speed
+            }
+        });
+
+        function showMessage(text) {
+            // Remove existing message
+            const existing = document.querySelector('#status-message');
+            if (existing) existing.parentNode.removeChild(existing);
+            
+            // Create new message
+            const message = document.createElement('a-text');
+            message.setAttribute('id', 'status-message');
+            message.setAttribute('value', text);
+            message.setAttribute('position', '0 3 -1');
+            message.setAttribute('align', 'center');
+            message.setAttribute('width', '4');
+            message.setAttribute('color', '#FFD700');
+            document.querySelector('a-scene').appendChild(message);
+            
+            setTimeout(() => {
+                if (message.parentNode) message.parentNode.removeChild(message);
+            }, 3000);
+        }
+
+        // Welcome message
+        setTimeout(() => {
+            showMessage("Welcome to the Stadium! 🏟️\nPress START RUN to begin or use Oculus grip buttons");
+        }, 2000);
+
+        // Hide control hint after 10 seconds
+        setTimeout(() => {
+            document.querySelector('#control-hint').style.display = 'none';
+        }, 10000);
+    </script>
+</body>
+</html>
