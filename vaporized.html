@@ -143,41 +143,6 @@
     background: rgba(35, 194, 255, 0.2);
   }
 
-  /* VR Experience Section */
-  .vr-section {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1004;
-    display: none;
-  }
-
-  .vr-launch-btn {
-    display: inline-block;
-    padding: 12px 20px;
-    background: var(--accent);
-    color: #002;
-    text-decoration: none;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(76, 201, 240, 0.4);
-    border: none;
-    cursor: pointer;
-  }
-
-  .vr-launch-btn:hover {
-    background: #7bdff2;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(76, 201, 240, 0.6);
-  }
-
-  .vr-icon {
-    margin-right: 8px;
-    font-size: 1.2rem;
-  }
-
   /* Star Wars Intro Styles */
   #starwars-intro {
     position: fixed;
@@ -324,14 +289,6 @@
   <!-- VR Mode Toggle -->
   <button id="vrToggle">Enter VR</button>
 
-  <!-- VR Experience Button -->
-  <div id="vrExperience" class="vr-section">
-    <a href="journeys/mouth_final.html" class="vr-launch-btn" id="vrLaunch">
-      <span class="vr-icon">👁️</span>
-      Enter VR Experience
-    </a>
-  </div>
-
   <!-- Audio Elements - INCLUDES SAD CROWD -->
   <audio id="introMusic" src="assets/audio/intro.mp3" preload="auto" autoplay loop></audio>
   <audio id="cheeringCrowd" src="assets/audio/reward_cheer.mp3" preload="auto"></audio>
@@ -422,8 +379,6 @@
   const sadCrowd = document.getElementById('sadCrowd');
   const loading = document.getElementById('loading');
   const vrToggle = document.getElementById('vrToggle');
-  const vrExperience = document.getElementById('vrExperience');
-  const vrLaunch = document.getElementById('vrLaunch');
   const negativeConsequence = document.getElementById('negativeConsequence');
   const positiveConsequence = document.getElementById('positiveConsequence');
   const negativeContinue = document.getElementById('negativeContinue');
@@ -465,25 +420,6 @@
 
   function showContinueButton() {
     continueBtn.style.display = 'block';
-  }
-
-  // -------- VR EXPERIENCE LINKING ----------
-  function showVRExperienceButton() {
-    vrExperience.style.display = 'block';
-  }
-
-  function updateVRExperienceLink(choiceType) {
-    // Update the VR experience link based on user choice
-    let vrUrl = TO_VR;
-    
-    if (choiceType === 'positive') {
-      vrUrl += '?choice=positive';
-    } else if (choiceType === 'negative') {
-      vrUrl += '?choice=negative';
-    }
-    
-    vrLaunch.href = vrUrl;
-    showVRExperienceButton();
   }
 
   // -------- AUDIO SYSTEM WITH BOTH POSITIVE AND NEGATIVE FEEDBACK ----------
@@ -615,14 +551,10 @@
   function showConsequence(isNegative) {
     if (isNegative) {
       negativeConsequence.style.display = 'flex';
-      // Update VR link for negative choice
-      updateVRExperienceLink('negative');
       // Play sad crowd for negative choice
       setTimeout(playSadCrowd, 300);
     } else {
       positiveConsequence.style.display = 'flex';
-      // Update VR link for positive choice
-      updateVRExperienceLink('positive');
       // Play cheering crowd for positive choice
       setTimeout(playCheeringCrowd, 300);
     }
@@ -811,13 +743,6 @@
     }
   });
 
-  // VR Experience Button
-  vrLaunch.addEventListener('click', (e) => {
-    e.preventDefault();
-    console.log('Launching VR experience with choice parameter');
-    fadeAndGo(vrLaunch.href);
-  });
-
   // Keyboard shortcuts
   window.addEventListener('keydown', (e)=>{
     if(e.key==='1') {
@@ -838,12 +763,6 @@
         } else {
           enterVR();
         }
-      }
-    }
-    if(e.key === 'r' || e.key === 'R') {
-      // Quick access to VR experience
-      if (vrExperience.style.display !== 'none') {
-        vrLaunch.click();
       }
     }
   });
