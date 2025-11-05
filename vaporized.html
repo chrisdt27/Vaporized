@@ -547,18 +547,20 @@
     }
   }
 
-  // Show consequence overlay based on choice
-  function showConsequence(isNegative) {
+  // Show consequence overlay based on choice - FIXED VERSION
+function showConsequence(isNegative) {
+    console.log(`Showing consequence: ${isNegative ? 'Negative (Take a Puff)' : 'Positive (No Thanks)'}`);
+    
     if (isNegative) {
-      negativeConsequence.style.display = 'flex';
-      // Play sad crowd for negative choice
-      setTimeout(playSadCrowd, 300);
+        negativeConsequence.style.display = 'flex';
+        // Play SAD audio for NEGATIVE choice (Take a Puff)
+        setTimeout(playSadCrowd, 300);
     } else {
-      positiveConsequence.style.display = 'flex';
-      // Play cheering crowd for positive choice
-      setTimeout(playCheeringCrowd, 300);
+        positiveConsequence.style.display = 'flex';
+        // Play CHEERING audio for POSITIVE choice (No Thanks)  
+        setTimeout(playCheeringCrowd, 300);
     }
-  }
+}
 
   // Hide all consequence overlays
   function hideConsequences() {
@@ -784,3 +786,4 @@
 </script>
 </body>
 </html>
+
