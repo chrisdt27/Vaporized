@@ -1,1 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Track Practice</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+        }
+        video {
+            width: 100%;
+            height: auto;
+        }
+        .skip-message {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .skip-message.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <video id="trackVideo" autoplay controls>
+            <source src="Track.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="skip-message" id="skipMessage">
+            Click anywhere to continue to interactive experience
+        </div>
+    </div>
 
+    <script>
+        const video = document.getElementById('trackVideo');
+        const skipMessage = document.getElementById('skipMessage');
+
+        // Redirect to Part 3 after video ends
+        video.addEventListener('ended', function() {
+            window.location.href = '../part3-vaping-impact.html';
+        });
+
+        // Show skip message after 5 seconds
+        setTimeout(function() {
+            skipMessage.classList.add('show');
+        }, 5000);
+
+        // Allow clicking to skip to Part 3
+        document.addEventListener('click', function() {
+            window.location.href = '../part3-vaping-impact.html';
+        });
+
+        // Allow spacebar/enter to skip
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Space' || event.code === 'Enter') {
+                window.location.href = '../part3-vaping-impact.html';
+            }
+        });
+    </script>
+</body>
+</html>
