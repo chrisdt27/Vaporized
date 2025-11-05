@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Vaping vs Performance - Oculus Interactive Race</title>
+    <title>Track Runner Vaping Impact - Immersive 3D Experience</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; }
-        .ui-panel {
+        .health-ui {
             position: fixed;
             top: 20px;
             left: 20px;
@@ -17,19 +17,7 @@
             z-index: 1000;
             font-family: Arial, sans-serif;
         }
-        .health-bar {
-            width: 200px;
-            height: 20px;
-            background: #333;
-            border-radius: 10px;
-            margin: 5px 0;
-            overflow: hidden;
-        }
-        .health-fill {
-            height: 100%;
-            transition: width 0.3s ease;
-        }
-        .runner-info {
+        .metric {
             margin: 10px 0;
             padding: 8px;
             border-radius: 5px;
@@ -38,391 +26,296 @@
 </head>
 <body>
     <a-scene 
-        background="color: #1E90FF"
         vr-mode-ui="enabled: true"
         device-orientation-permission-ui="enabled: true"
+        background="color: #1E90FF"
     >
 
-        <!-- STADIUM ENVIRONMENT -->
-        <a-entity id="stadium">
-            <!-- Olympic Track -->
-            <a-ring id="track-lane-1" color="#8B4513" radius-inner="9" radius-outer="10" rotation="-90 0 0" position="0 0.01 0"></a-ring>
-            <a-ring id="track-lane-2" color="#8B4513" radius-inner="10.5" radius-outer="11.5" rotation="-90 0 0" position="0 0.01 0"></a-ring>
-            <a-ring id="track-lanes" color="white" radius-inner="9" radius-outer="11.5" rotation="-90 0 0" position="0 0.02 0" opacity="0.3"></a-ring>
+        <!-- 360° VIDEO SPHERE - You're INSIDE the video -->
+        <a-videosphere 
+            src="assets/track-runner-struggle-360.mp4"
+            rotation="0 90 0"
+            radius="50"
+            autoplay="true"
+            id="main-video">
+        </a-videosphere>
+
+        <!-- 3D TRACK ELEMENTS (overlaid on video) -->
+        <a-entity id="interactive-elements">
+            <!-- Running track overlay -->
+            <a-ring color="#8B4513" radius-inner="48" radius-outer="49" rotation="-90 0 0" opacity="0.3"></a-ring>
             
-            <!-- Stadium Seats -->
-            <a-torus color="#C0C0C0" arc="360" radius="15" radius-tubular="2" rotation="0 0 0" position="0 3 0"></a-torus>
-            <a-torus color="#A9A9A9" arc="360" radius="18" radius-tubular="2" rotation="0 0 0" position="0 5 0"></a-torus>
+            <!-- Breath particles (visualize struggling) -->
+            <a-entity id="breath-particles" particle-system="preset: dust; color: #87CEEB; particleCount: 100"></a-entity>
             
-            <!-- Finish Line -->
-            <a-box color="#FFD700" width="1" height="0.5" depth="5" position="0 0.25 10" rotation="0 0 0"></a-box>
-            <a-text value="FINISH" position="0 2 10" color="black" align="center" scale="2 2 2"></a-text>
+            <!-- Other runners (3D models) -->
+            <a-entity id="other-runners">
+                <a-cylinder color="#4682B4" radius="0.3" height="1.8" position="-5 0.9 -48"></a-cylinder>
+                <a-cylinder color="#4682B4" radius="0.3" height="1.8" position="3 0.9 -45"></a-cylinder>
+                <a-cylinder color="#4682B4" radius="0.3" height="1.8" position="-2 0.9 -42"></a-cylinder>
+            </a-entity>
         </a-entity>
 
-        <!-- RUNNERS -->
-        <!-- Healthy Runner -->
-        <a-entity id="healthy-runner" class="runner" data-healthy="true">
-            <a-cylinder color="#4CAF50" radius="0.3" height="1.8" position="0 0.9 -9" rotation="0 0 0"></a-cylinder>
-            <a-sphere color="#87CEEB" radius="0.2" position="0 1.8 -9" class="lung" id="healthy-lung"></a-sphere>
-            <a-text value="Healthy Runner" position="0 2.5 -9" color="green" align="center"></a-text>
+        <!-- HEALTH METRICS (floating in 3D space) -->
+        <a-entity id="health-metrics" position="0 2 -2">
+            <a-plane color="rgba(0,0,0,0.8)" width="2.5" height="1.5" position="0 0 0"></a-plane>
+            <a-text value="YOUR VITAL SIGNS" position="0 0.6 0.01" color="white" align="center"></a-text>
+            <a-text value="OXYGEN: 100%" id="oxygen-display" position="-0.8 0.2 0.01" color="#87CEEB" align="left"></a-text>
+            <a-text value="HEART RATE: 120" id="heartrate-display" position="-0.8 -0.1 0.01" color="#FF6B6B" align="left"></a-text>
+            <a-text value="PERFORMANCE: 100%" id="performance-display" position="-0.8 -0.4 0.01" color="#4CAF50" align="left"></a-text>
         </a-entity>
 
-        <!-- Vaping Runner -->
-        <a-entity id="vaping-runner" class="runner" data-healthy="false">
-            <a-cylinder color="#FF6B6B" radius="0.3" height="1.8" position="2 0.9 -9" rotation="0 0 0"></a-cylinder>
-            <a-sphere color="#8B4513" radius="0.2" position="2 1.8 -9" class="lung" id="vaping-lung"></a-sphere>
-            <a-text value="Vaping Runner" position="2 2.5 -9" color="red" align="center"></a-text>
+        <!-- LUNG VISUALIZATION (3D model that changes) -->
+        <a-entity id="lung-display" position="2 1.5 -1.5">
+            <a-text value="YOUR LUNGS" position="0 0.8 0" color="white" align="center"></a-text>
+            <a-sphere color="#87CEEB" radius="0.3" id="left-lung" position="-0.2 0 0" 
+                     animation="property: scale; dir: alternate; loop: true; dur: 2000; to: 1.2 1.2 1.2">
+            </a-sphere>
+            <a-sphere color="#87CEEB" radius="0.3" id="right-lung" position="0.2 0 0"
+                     animation="property: scale; dir: alternate; loop: true; dur: 2000; to: 1.2 1.2 1.2">
+            </a-sphere>
         </a-entity>
 
-        <!-- CONTROLLERS FOR INTERACTION -->
-        <a-entity laser-controls="hand: right"></a-entity>
-        <a-entity laser-controls="hand: left"></a-entity>
-
-        <!-- VAPE CHOICE STATION -->
-        <a-entity id="vape-station" position="0 1.5 -5">
-            <a-box color="#FF4444" width="0.5" height="0.5" depth="0.1" position="-1 0 0" class="interactive" data-action="vape">
-                <a-text value="Take Vape" position="0 -0.4 0.1" color="white" align="center"></a-text>
-            </a-box>
-            <a-box color="#44FF44" width="0.5" height="0.5" depth="0.1" position="1 0 0" class="interactive" data-action="healthy">
-                <a-text value="Stay Clean" position="0 -0.4 0.1" color="white" align="center"></a-text>
-            </a-box>
-            <a-text value="Choose Before Race" position="0 0.8 0" color="black" align="center" scale="1.5 1.5 1.5"></a-text>
+        <!-- INTERACTIVE CONTROLS -->
+        <a-entity id="vr-controls">
+            <a-entity laser-controls="hand: right"></a-entity>
+            <a-entity laser-controls="hand: left"></a-entity>
+            <a-entity hand-controls="hand: left"></a-entity>
+            <a-entity hand-controls="hand: right"></a-entity>
         </a-entity>
 
-        <!-- HEALTH METRICS DISPLAY -->
-        <a-entity id="metrics-display" position="0 3 -3">
-            <a-plane color="rgba(0,0,0,0.8)" width="3" height="2" position="0 0 0"></a-plane>
-            <a-text value="Runner Metrics" position="0 0.8 0.01" color="white" align="center"></a-text>
-            <a-text value="Oxygen: 100%" id="oxygen-text" position="-1 0.3 0.01" color="#87CEEB" align="left"></a-text>
-            <a-text value="Endurance: 100%" id="endurance-text" position="-1 0 0.01" color="#4CAF50" align="left"></a-text>
-            <a-text value="Speed: 100%" id="speed-text" position="-1 -0.3 0.01" color="#FFD700" align="left"></a-text>
-            <a-text value="Recovery: 0s" id="recovery-text" position="-1 -0.6 0.01" color="#FF6B6B" align="left"></a-text>
-        </a-entity>
-
-        <!-- CAMERA RIG FOR OCULUS -->
-        <a-entity id="camera-rig" movement-controls>
+        <!-- CAMERA RIG -->
+        <a-entity id="camera-rig" movement-controls="controls: gamepad, keyboard">
             <a-entity camera look-controls position="0 1.6 0" wasd-controls="fly: true"></a-entity>
-            
-            <!-- Hands for running motion -->
-            <a-entity class="hand" id="left-hand" hand-controls="hand: left" 
-                     animation="property: position; to: -0.5 1.3 -0.5; dir: alternate; loop: true; dur: 500">
-            </a-entity>
-            <a-entity class="hand" id="right-hand" hand-controls="hand: right"
-                     animation="property: position; to: 0.5 1.3 -0.5; dir: alternate; loop: true; dur: 500">
-            </a-entity>
         </a-entity>
 
         <!-- AUDIO -->
-        <audio id="crowd-sound" src="assets/crowd-cheer.mp3" preload="auto"></audio>
-        <audio id="breathing-healthy" src="assets/breathing-normal.mp3" preload="auto"></audio>
-        <audio id="breathing-labored" src="assets/breathing-labored.mp3" preload="auto"></audio>
+        <audio id="breathing-audio" src="assets/breathing-progressive.mp3" preload="auto"></audio>
+        <audio id="coughing-audio" src="assets/coughing-fit.mp3" preload="auto"></audio>
+        <audio id="crowd-audio" src="assets/stadium-crowd.mp3" preload="auto" loop="true"></audio>
 
     </a-scene>
 
-    <!-- UI PANEL -->
-    <div class="ui-panel">
-        <h3>🏃‍♂️ Vaping vs Performance Race</h3>
-        <div class="runner-info" style="background: rgba(76,175,80,0.3);">
-            <strong>Healthy Runner:</strong>
-            <div class="health-bar">
-                <div class="health-fill" id="healthy-oxygen" style="width: 100%; background: #87CEEB;"></div>
-            </div>
-            <div class="health-bar">
-                <div class="health-fill" id="healthy-endurance" style="width: 100%; background: #4CAF50;"></div>
-            </div>
+    <!-- HEALTH STATUS UI -->
+    <div class="health-ui">
+        <h3>🏃‍♂️ Your Body's Response</h3>
+        <div class="metric" style="background: rgba(255,107,107,0.3);">
+            <strong>Lung Capacity:</strong> <span id="lung-capacity-ui">100%</span>
         </div>
-        <div class="runner-info" style="background: rgba(255,107,107,0.3);">
-            <strong>Vaping Runner:</strong>
-            <div class="health-bar">
-                <div class="health-fill" id="vaping-oxygen" style="width: 100%; background: #87CEEB;"></div>
-            </div>
-            <div class="health-bar">
-                <div class="health-fill" id="vaping-endurance" style="width: 100%; background: #4CAF50;"></div>
-            </div>
+        <div class="metric" style="background: rgba(76,175,80,0.3);">
+            <strong>Running Pace:</strong> <span id="pace-ui">100%</span>
         </div>
-        <p>🎮 Swing controllers to run faster!</p>
-        <p>👁️ Use gaze or controllers to select choices</p>
+        <div class="metric" style="background: rgba(135,206,235,0.3);">
+            <strong>Oxygen Intake:</strong> <span id="oxygen-ui">100%</span>
+        </div>
+        <p>Look around - you're on the track!</p>
     </div>
 
     <script>
-        // Game State
-        const gameState = {
-            currentRunner: 'healthy', // 'healthy' or 'vaping'
-            raceStarted: false,
-            runnerStats: {
-                healthy: {
-                    oxygen: 100,
-                    endurance: 100,
-                    speed: 100,
-                    recovery: 0,
-                    position: 0,
-                    lapProgress: 0
-                },
-                vaping: {
-                    oxygen: 100,
-                    endurance: 100,
-                    speed: 100,
-                    recovery: 45,
-                    position: 0,
-                    lapProgress: 0
-                }
+        // Immersive Experience State
+        const experience = {
+            currentTime: 0,
+            healthMetrics: {
+                oxygen: 100,
+                heartRate: 120,
+                performance: 100,
+                lungCapacity: 100
             },
-            controllerSwingSpeed: 0
+            videoDuration: 30, // seconds
+            effectsActive: false
         };
 
         // Initialize A-Frame Components
-        AFRAME.registerComponent('runner-controller', {
+        AFRAME.registerComponent('health-tracker', {
             init: function() {
-                this.speed = 0;
-                this.lastPosition = new THREE.Vector3();
-                this.el.addEventListener('controllerconnected', (e) => {
-                    console.log('Controller connected:', e.detail.name);
-                });
+                this.video = document.querySelector('#main-video');
+                this.breathingAudio = document.querySelector('#breathing-audio');
+                this.coughingAudio = document.querySelector('#coughing-audio');
+                this.crowdAudio = document.querySelector('#crowd-audio');
+                
+                // Start ambient audio
+                this.crowdAudio.volume = 0.3;
+                this.crowdAudio.play().catch(e => console.log('Audio requires interaction'));
             },
             tick: function(time, delta) {
-                if (!gameState.raceStarted) return;
+                if (!this.video) return;
                 
-                const currentPosition = this.el.object3D.position;
-                const velocity = currentPosition.distanceTo(this.lastPosition) / (delta / 1000);
+                // Simulate video progress (since we can't get currentTime from videosphere easily)
+                experience.currentTime += delta / 1000;
                 
-                gameState.controllerSwingSpeed = Math.min(velocity * 10, 100);
-                this.lastPosition.copy(currentPosition);
+                // Progressive health deterioration
+                this.updateHealthMetrics();
+                this.applyVisualEffects();
+                this.updateAudio();
+            },
+            updateHealthMetrics: function() {
+                const progress = experience.currentTime / experience.videoDuration;
                 
-                // Update runner speed based on controller movement
-                if (gameState.currentRunner === 'healthy') {
-                    gameState.runnerStats.healthy.speed = 80 + gameState.controllerSwingSpeed;
-                } else {
-                    gameState.runnerStats.vaping.speed = 50 + (gameState.controllerSwingSpeed * 0.6);
+                // Progressive deterioration
+                experience.healthMetrics.oxygen = Math.max(40, 100 - (progress * 60));
+                experience.healthMetrics.heartRate = Math.min(180, 120 + (progress * 60));
+                experience.healthMetrics.performance = Math.max(30, 100 - (progress * 70));
+                experience.healthMetrics.lungCapacity = Math.max(35, 100 - (progress * 65));
+                
+                // Update displays
+                this.updateDisplays();
+            },
+            applyVisualEffects: function() {
+                const lungs = document.querySelectorAll('#left-lung, #right-lung');
+                const breathParticles = document.querySelector('#breath-particles');
+                
+                // Lung color changes
+                const oxygenLevel = experience.healthMetrics.oxygen;
+                let lungColor = '#87CEEB'; // Healthy blue
+                
+                if (oxygenLevel < 70) lungColor = '#FFA500'; // Warning orange
+                if (oxygenLevel < 50) lungColor = '#FF6B6B'; // Danger red
+                if (oxygenLevel < 40) lungColor = '#8B4513'; // Critical brown
+                
+                lungs.forEach(lung => {
+                    lung.setAttribute('color', lungColor);
+                    // Reduce breathing animation as oxygen decreases
+                    const scale = 1.0 + (oxygenLevel / 200);
+                    lung.setAttribute('scale', `${scale} ${scale} ${scale}`);
+                });
+                
+                // Breath particles become more labored
+                if (oxygenLevel < 60 && !experience.effectsActive) {
+                    breathParticles.setAttribute('particle-system', 'particleCount: 300; color: #696969');
+                    experience.effectsActive = true;
+                }
+            },
+            updateAudio: function() {
+                const oxygenLevel = experience.healthMetrics.oxygen;
+                
+                // Progressive breathing difficulty
+                if (oxygenLevel < 70 && this.breathingAudio.paused) {
+                    this.breathingAudio.volume = 0.7;
+                    this.breathingAudio.play().catch(e => console.log('Audio interaction needed'));
                 }
                 
-                updateRace();
+                // Trigger coughing fits
+                if (oxygenLevel < 50 && !this.coughingTriggered) {
+                    this.coughingAudio.volume = 0.8;
+                    this.coughingAudio.play().catch(e => console.log('Audio interaction needed'));
+                    this.coughingTriggered = true;
+                    
+                    // Reset after delay
+                    setTimeout(() => {
+                        this.coughingTriggered = false;
+                    }, 5000);
+                }
+            },
+            updateDisplays: function() {
+                // 3D Text displays
+                document.querySelector('#oxygen-display').setAttribute('value', 
+                    `OXYGEN: ${Math.round(experience.healthMetrics.oxygen)}%`);
+                document.querySelector('#heartrate-display').setAttribute('value', 
+                    `HEART RATE: ${Math.round(experience.healthMetrics.heartRate)}`);
+                document.querySelector('#performance-display').setAttribute('value', 
+                    `PERFORMANCE: ${Math.round(experience.healthMetrics.performance)}%`);
+                
+                // UI displays
+                document.querySelector('#lung-capacity-ui').textContent = 
+                    `${Math.round(experience.healthMetrics.lungCapacity)}%`;
+                document.querySelector('#pace-ui').textContent = 
+                    `${Math.round(experience.healthMetrics.performance)}%`;
+                document.querySelector('#oxygen-ui').textContent = 
+                    `${Math.round(experience.healthMetrics.oxygen)}%`;
+                
+                // Color coding for urgency
+                const oxygenUI = document.querySelector('#oxygen-display');
+                if (experience.healthMetrics.oxygen < 50) {
+                    oxygenUI.setAttribute('color', '#FF4444');
+                } else if (experience.healthMetrics.oxygen < 70) {
+                    oxygenUI.setAttribute('color', '#FFA500');
+                }
             }
         });
 
-        AFRAME.registerComponent('interactive-choice', {
+        // Add health tracking to scene
+        document.querySelector('a-scene').setAttribute('health-tracker', '');
+
+        // Interactive controller for "feeling" the struggle
+        AFRAME.registerComponent('struggle-controller', {
             init: function() {
-                this.el.addEventListener('click', () => {
-                    const action = this.el.getAttribute('data-action');
-                    handleChoice(action);
+                this.el.addEventListener('gripdown', () => {
+                    this.simulateStruggle();
                 });
-                
-                this.el.addEventListener('mouseenter', () => {
-                    this.el.setAttribute('animation', 'property: scale; to: 1.2 1.2 1.2; dur: 200');
-                });
-                
-                this.el.addEventListener('mouseleave', () => {
-                    this.el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 200');
-                });
-            }
-        });
-
-        // Add components to interactive elements
-        document.querySelectorAll('.interactive').forEach(el => {
-            el.setAttribute('interactive-choice', '');
-        });
-
-        document.querySelectorAll('.hand').forEach(hand => {
-            hand.setAttribute('runner-controller', '');
-        });
-
-        function handleChoice(action) {
-            if (action === 'vape') {
-                // Apply vaping effects
-                gameState.runnerStats.vaping.oxygen = 65;
-                gameState.runnerStats.vaping.endurance = 50;
-                gameState.runnerStats.vaping.speed = 60;
-                gameState.runnerStats.vaping.recovery = 45;
-                
-                // Visual changes for vaping runner
-                const vapingLung = document.querySelector('#vaping-lung');
-                vapingLung.setAttribute('color', '#8B4513');
-                vapingLung.setAttribute('animation', 'property: scale; to: 0.8 0.8 0.8; dur: 1000; loop: true');
-                
-                showMessage("Vaping reduces lung capacity by 35%!\nEndurance drops significantly.");
-                
-            } else {
-                // Healthy choice effects
-                gameState.runnerStats.healthy.oxygen = 100;
-                gameState.runnerStats.healthy.endurance = 100;
-                gameState.runnerStats.healthy.speed = 100;
-                gameState.runnerStats.healthy.recovery = 15;
-                
-                showMessage("Healthy lungs = Peak performance!\nFast recovery, maximum endurance.");
-            }
-            
-            // Start the race
-            gameState.raceStarted = true;
-            document.querySelector('#vape-station').setAttribute('visible', 'false');
-            
-            // Play crowd sound
-            const crowdSound = document.querySelector('#crowd-sound');
-            crowdSound.play().catch(e => console.log('Audio play failed:', e));
-        }
-
-        function updateRace() {
-            if (!gameState.raceStarted) return;
-
-            // Update runner positions based on speed and stats
-            const trackRadius = 10;
-            
-            // Healthy runner
-            const healthyStats = gameState.runnerStats.healthy;
-            healthyStats.lapProgress += (healthyStats.speed / 1000);
-            const healthyAngle = healthyStats.lapProgress * Math.PI * 2;
-            const healthyX = Math.sin(healthyAngle) * trackRadius;
-            const healthyZ = Math.cos(healthyAngle) * trackRadius;
-            
-            document.querySelector('#healthy-runner').setAttribute('position', {
-                x: healthyX,
-                y: 0.9,
-                z: healthyZ
-            });
-            document.querySelector('#healthy-runner').setAttribute('rotation', {
-                x: 0,
-                y: -healthyAngle * (180 / Math.PI),
-                z: 0
-            });
-
-            // Vaping runner (outer lane)
-            const vapingStats = gameState.runnerStats.vaping;
-            vapingStats.lapProgress += (vapingStats.speed / 1200); // Slower due to vaping
-            const vapingAngle = vapingStats.lapProgress * Math.PI * 2;
-            const vapingX = Math.sin(vapingAngle) * (trackRadius + 1.5);
-            const vapingZ = Math.cos(vapingAngle) * (trackRadius + 1.5);
-            
-            document.querySelector('#vaping-runner').setAttribute('position', {
-                x: vapingX,
-                y: 0.9,
-                z: vapingZ
-            });
-            document.querySelector('#vaping-runner').setAttribute('rotation', {
-                x: 0,
-                y: -vapingAngle * (180 / Math.PI),
-                z: 0
-            });
-
-            // Update metrics display
-            updateMetricsDisplay();
-            updateHealthBars();
-            
-            // Apply progressive effects for vaping runner
-            if (gameState.raceStarted) {
-                // Vaping runner gradually loses performance
-                vapingStats.oxygen = Math.max(40, vapingStats.oxygen - 0.01);
-                vapingStats.endurance = Math.max(30, vapingStats.endurance - 0.02);
-                vapingStats.speed = Math.max(40, vapingStats.speed - 0.01);
-                
-                // Healthy runner maintains better performance
-                healthyStats.oxygen = Math.max(80, healthyStats.oxygen - 0.001);
-                healthyStats.endurance = Math.max(85, healthyStats.endurance - 0.005);
-            }
-
-            // Check for lap completion
-            if (healthyStats.lapProgress >= 1 || vapingStats.lapProgress >= 1) {
-                finishRace();
-            }
-        }
-
-        function updateMetricsDisplay() {
-            const stats = gameState.runnerStats[gameState.currentRunner];
-            document.querySelector('#oxygen-text').setAttribute('value', `Oxygen: ${Math.round(stats.oxygen)}%`);
-            document.querySelector('#endurance-text').setAttribute('value', `Endurance: ${Math.round(stats.endurance)}%`);
-            document.querySelector('#speed-text').setAttribute('value', `Speed: ${Math.round(stats.speed)}%`);
-            document.querySelector('#recovery-text').setAttribute('value', `Recovery: ${stats.recovery}s`);
-        }
-
-        function updateHealthBars() {
-            // Healthy runner bars
-            document.querySelector('#healthy-oxygen').style.width = `${gameState.runnerStats.healthy.oxygen}%`;
-            document.querySelector('#healthy-endurance').style.width = `${gameState.runnerStats.healthy.endurance}%`;
-            
-            // Vaping runner bars
-            document.querySelector('#vaping-oxygen').style.width = `${gameState.runnerStats.vaping.oxygen}%`;
-            document.querySelector('#vaping-endurance').style.width = `${gameState.runnerStats.vaping.endurance}%`;
-        }
-
-        function finishRace() {
-            gameState.raceStarted = false;
-            
-            const healthyLaps = Math.floor(gameState.runnerStats.healthy.lapProgress);
-            const vapingLaps = Math.floor(gameState.runnerStats.vaping.lapProgress);
-            
-            let message = "";
-            if (healthyLaps > vapingLaps) {
-                message = "🏆 Healthy Runner Wins!\nVaping reduces athletic performance by 40-60%";
-            } else {
-                message = "😔 Vaping Runner Struggles\nReduced oxygen intake affects endurance";
-            }
-            
-            showMessage(message);
-            
-            // Reset for new race
-            setTimeout(() => {
-                resetRace();
-            }, 5000);
-        }
-
-        function resetRace() {
-            gameState.runnerStats.healthy.lapProgress = 0;
-            gameState.runnerStats.vaping.lapProgress = 0;
-            document.querySelector('#vape-station').setAttribute('visible', 'true');
-            document.querySelector('#healthy-runner').setAttribute('position', '0 0.9 -9');
-            document.querySelector('#vaping-runner').setAttribute('position', '2 0.9 -9');
-        }
-
-        function showMessage(text) {
-            // Remove existing message
-            const existingMessage = document.querySelector('#race-message');
-            if (existingMessage) {
-                existingMessage.parentNode.removeChild(existingMessage);
-            }
-            
-            // Create new message
-            const messageEl = document.createElement('a-text');
-            messageEl.setAttribute('id', 'race-message');
-            messageEl.setAttribute('value', text);
-            messageEl.setAttribute('position', '0 4 -3');
-            messageEl.setAttribute('align', 'center');
-            messageEl.setAttribute('width', '6');
-            messageEl.setAttribute('color', '#FFD700');
-            messageEl.setAttribute('scale', '1.5 1.5 1.5');
-            document.querySelector('a-scene').appendChild(messageEl);
-            
-            setTimeout(() => {
-                if (messageEl.parentNode) {
-                    messageEl.parentNode.removeChild(messageEl);
+            },
+            simulateStruggle: function() {
+                // Haptic feedback for Oculus controllers
+                if (this.el.components['haptic']) {
+                    this.el.components.haptic.pulse(0.8, 200);
                 }
-            }, 5000);
-        }
-
-        // Switch between runner perspectives
-        function switchPerspective(runner) {
-            gameState.currentRunner = runner;
-            const cameraRig = document.querySelector('#camera-rig');
-            
-            if (runner === 'healthy') {
-                cameraRig.setAttribute('position', '0 1.6 0');
-                showMessage("Now controlling: Healthy Runner\nSwing controllers to run!");
-            } else {
-                cameraRig.setAttribute('position', '2 1.6 0');
-                showMessage("Now controlling: Vaping Runner\nFeel the struggle!");
-            }
-            
-            updateMetricsDisplay();
-        }
-
-        // Keyboard shortcuts for testing
-        document.addEventListener('keydown', (e) => {
-            if (e.key === '1') switchPerspective('healthy');
-            if (e.key === '2') switchPerspective('vaping');
-            if (e.key === ' ') {
-                // Simulate controller swing
-                gameState.controllerSwingSpeed = Math.min(gameState.controllerSwingSpeed + 20, 100);
+                
+                // Visual struggle effect
+                const camera = document.querySelector('[camera]');
+                camera.setAttribute('animation', {
+                    property: 'position',
+                    to: `${Math.random() * 0.1} 1.6 ${Math.random() * 0.1}`,
+                    dur: 100,
+                    easing: 'easeInOut'
+                });
             }
         });
 
-        // Initialize
-        switchPerspective('healthy');
+        // Add struggle effect to controllers
+        document.querySelectorAll('[hand-controls]').forEach(controller => {
+            controller.setAttribute('struggle-controller', '');
+        });
+
+        // Reset experience when video ends
+        function resetExperience() {
+            experience.currentTime = 0;
+            experience.healthMetrics = {
+                oxygen: 100,
+                heartRate: 120,
+                performance: 100,
+                lungCapacity: 100
+            };
+            experience.effectsActive = false;
+            
+            // Reset visual elements
+            const lungs = document.querySelectorAll('#left-lung, #right-lung');
+            lungs.forEach(lung => {
+                lung.setAttribute('color', '#87CEEB');
+                lung.setAttribute('scale', '1 1 1');
+            });
+            
+            document.querySelector('#breath-particles').setAttribute('particle-system', 'particleCount: 100');
+        }
+
+        // Auto-reset after video duration
+        setInterval(() => {
+            if (experience.currentTime >= experience.videoDuration) {
+                resetExperience();
+            }
+        }, 1000);
+
+        // Keyboard controls for testing
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r') resetExperience();
+            if (e.key === ' ') {
+                // Simulate struggle
+                experience.healthMetrics.oxygen = Math.max(20, experience.healthMetrics.oxygen - 10);
+            }
+        });
+
+        // Instructions for Oculus
+        setTimeout(() => {
+            const instructionEl = document.createElement('a-text');
+            instructionEl.setAttribute('value', 'Look around 360°\nSqueeze controllers to feel the struggle\nWatch your vital signs decline');
+            instructionEl.setAttribute('position', '0 3 -1.5');
+            instructionEl.setAttribute('align', 'center');
+            instructionEl.setAttribute('color', '#FFD700');
+            instructionEl.setAttribute('scale', '1.2 1.2 1.2');
+            document.querySelector('a-scene').appendChild(instructionEl);
+            
+            setTimeout(() => {
+                document.querySelector('a-scene').removeChild(instructionEl);
+            }, 8000);
+        }, 2000);
     </script>
 </body>
 </html>
