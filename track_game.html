@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vaporized - 3D Track Challenge</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: #000;
+        }
+        
+        #ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            z-index: 100;
+            text-align: center;
+            pointer-events: none;
+        }
+        
+        #title {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 15px rgba(255, 100, 100, 0.8);
+            background: linear-gradient(45deg, #ff8a00, #e52e71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        #subtitle {
+            font-size: 1.2rem;
+            color: #ff5555;
+            margin-bottom: 20px;
+        }
+        
+        #instructions {
+            font-size: 1rem;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            display: inline-block;
+            max-width: 600px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        
+        .stat-box {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            min-width: 150px;
+        }
+        
+        .health-bar {
+            width: 300px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            margin: 10px auto;
+            overflow: hidden;
+        }
+        
+        .health-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000);
+            transition: width 0.3s;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+        
+        .control-button {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 5px;
+        }
+        
+        .lap-counter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            z-index: 100;
+        }
+        
+        .completion-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 200;
+            text-align: center;
+        }
+        
+        .completion-title {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #ff5555;
+        }
+        
+        .completion-message {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            max-width: 600px;
+            line-height: 1.5;
+        }
+        
+        .vaping-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(100,100,100,0.3) 0%, rgba(0,0,0,0) 70%);
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        .cough-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+            z-index: 60;
+            opacity: 0;
+        }
+        
+        .effects-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+            max-width: 300px;
+        }
+        
+        .effect {
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(255, 0, 0, 0.3);
+            border-radius: 5px;
+            display: none;
+            font-size: 0.9rem;
+        }
+        
+        .visible {
+            display: block;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        #debug {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: lime;
+            padding: 10px;
+            font-family: monospace;
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="debug">Loading...</div>
+    <div id="gameContainer"></div>
+    
+    <div id="ui">
+        <h1 id="title">3D TRACK CHALLENGE</h1>
+        <h2 id="subtitle">Vaping vs. Healthy Lungs - First Person Perspective</h2>
+        <div id="instructions">
+            <p>Click and drag to run! The faster you move, the faster your character runs.</p>
+            <p>As a vaper, your lung capacity decreases - try to keep up with the healthy runner!</p>
+            <p class="pulse">You are seeing from the vaper's perspective on a 3D circular track</p>
+        </div>
+        
+        <div class="health-bar">
+            <div class="health-fill" id="healthBar"></div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div>Your Speed: <span id="playerSpeed">0</span> mph</div>
+            </div>
+            <div class="stat-box">
+                <div>Opponent Speed: <span id="opponentSpeed">0</span> mph</div>
+            </div>
+            <div class="stat-box">
+                <div>Lung Capacity: <span id="lungCapacity">100</span>%</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="lap-counter">Lap: <span id="lapNumber">1</span>/3</div>
+    
+    <div class="controls">
+        <button class="control-button" id="viewToggle">TOGGLE VIEW</button>
+        <button class="control-button" id="helpButton">HELP</button>
+    </div>
+    
+    <div class="effects-panel">
+        <div class="effect" id="effectShortness">Shortness of Breath - Speed Reduced</div>
+        <div class="effect" id="effectCoughing">Coughing Fit - Momentum Lost</div>
+        <div class="effect" id="effectFatigue">Fatigue - Can't Maintain Pace</div>
+    </div>
+    
+    <div class="vaping-effect" id="vapingEffect"></div>
+    <div class="cough-overlay" id="coughOverlay"></div>
+    
+    <div class="completion-screen" id="completionScreen">
+        <h1 class="completion-title">RACE COMPLETE</h1>
+        <p class="completion-message">Despite your best efforts, the effects of vaping significantly reduced your lung capacity and athletic performance. A healthy respiratory system is essential for peak physical performance.</p>
+        <button class="control-button" id="restartButton">TRY AGAIN</button>
+    </div>
+
+    <script>
+        // Debug logging
+        const debug = document.getElementById('debug');
+        debug.style.display = 'block';
+        
+        function log(message) {
+            debug.textContent = message;
+            console.log(message);
+        }
+
+        // Game state
+        const gameState = {
+            playerSpeed: 0,
+            opponentSpeed: 8,
+            lungCapacity: 100,
+            raceStarted: false,
+            raceFinished: false,
+            playerAngle: 0,
+            opponentAngle: 0,
+            currentLap: 1,
+            totalLaps: 3,
+            isFirstPersonView: true,
+            coughTimer: 0,
+            mouseDown: false,
+            lastMouseX: 0
+        };
+
+        // Three.js variables
+        let scene, camera, renderer;
+        let player, opponent;
+        const trackRadius = 40;
+
+        // Initialize the game
+        function init() {
+            log("Initializing 3D game...");
+            
+            try {
+                // Create scene with guaranteed background
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x87CEEB); // Sky blue
+                log("Scene created");
+                
+                // Create camera
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                setFirstPersonCamera();
+                log("Camera created");
+                
+                // Create renderer with fallback options
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                
+                if (!context) {
+                    throw new Error('WebGL not supported');
+                }
+                
+                renderer = new THREE.WebGLRenderer({ 
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: "high-performance"
+                });
+                
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.setClearColor(0x87CEEB, 1); // Ensure background color
+                
+                // Add renderer to DOM
+                const container = document.getElementById('gameContainer');
+                container.innerHTML = ''; // Clear any existing content
+                container.appendChild(renderer.domElement);
+                log("Renderer created and added to DOM");
+                
+                // Add basic lighting - using simpler materials for reliability
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+                scene.add(ambientLight);
+                log("Lighting added");
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(50, 50, 25);
+                scene.add(directionalLight);
+                
+                // Create simple but visible game objects
+                createSimpleTrack();
+                createSimpleEnvironment();
+                createSimpleRunners();
+                log("Game objects created");
+                
+                // Set up event listeners
+                setupEventListeners();
+                log("Event listeners set up");
+                
+                // Start game loop
+                animate();
+                log("Game loop started");
+                
+                // Start race after intro
+                setTimeout(() => {
+                    gameState.raceStarted = true;
+                    document.getElementById('instructions').innerHTML = 
+                        '<p class="pulse">RACE STARTED! Click and drag to run!</p>';
+                    log("Race started");
+                }, 3000);
+                
+                log("3D game initialized successfully!");
+                
+            } catch (error) {
+                log("Error: " + error.message);
+                // Fallback to 2D
+                init2DFallback();
+            }
+        }
+
+        function createSimpleTrack() {
+            // Simple track with bright colors for visibility
+            const trackGeometry = new THREE.RingGeometry(trackRadius - 5, trackRadius + 5, 32);
+            const trackMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x333333 // Dark gray for contrast
+            });
+            const track = new THREE.Mesh(trackGeometry, trackMaterial);
+            track.rotation.x = -Math.PI / 2;
+            scene.add(track);
+            
+            // Bright lane markings for visibility
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const points = [
+                    new THREE.Vector3(
+                        Math.sin(angle) * (trackRadius - 4.5),
+                        0.1,
+                        Math.cos(angle) * (trackRadius - 4.5)
+                    ),
+                    new THREE.Vector3(
+                        Math.sin(angle) * (trackRadius + 4.5),
+                        0.1,
+                        Math.cos(angle) * (trackRadius + 4.5)
+                    )
+                ];
+                const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                scene.add(line);
+            }
+            
+            // Bright yellow finish line
+            const finishLineGeometry = new THREE.BoxGeometry(2, 1, 10);
+            const finishLineMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const finishLine = new THREE.Mesh(finishLineGeometry, finishLineMaterial);
+            finishLine.position.set(0, 0.5, trackRadius);
+            scene.add(finishLine);
+        }
+
+        function createSimpleEnvironment() {
+            // Bright green ground for visibility
+            const groundGeometry = new THREE.PlaneGeometry(200, 200);
+            const groundMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x2E8B57 // Bright green
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.1;
+            scene.add(ground);
+            
+            // Simple stadium with visible colors
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const standGeometry = new THREE.BoxGeometry(20, 10, 8);
+                const standMaterial = new THREE.MeshBasicMaterial({ color: 0x666666 });
+                const stand = new THREE.Mesh(standGeometry, standMaterial);
+                
+                stand.position.set(
+                    Math.sin(angle) * (trackRadius + 15),
+                    5,
+                    Math.cos(angle) * (trackRadius + 15)
+                );
+                stand.rotation.y = -angle;
+                scene.add(stand);
+                
+                // Simple crowd with random colors
+                for (let j = -4; j <= 4; j += 2) {
+                    const personGeometry = new THREE.BoxGeometry(0.5, 1.5, 0.3);
+                    const personMaterial = new THREE.MeshBasicMaterial({ 
+                        color: new THREE.Color(Math.random(), Math.random(), Math.random())
+                    });
+                    const person = new THREE.Mesh(personGeometry, personMaterial);
+                    
+                    person.position.set(
+                        Math.sin(angle) * (trackRadius + 16),
+                        6,
+                        Math.cos(angle) * (trackRadius + 16) + j
+                    );
+                    person.rotation.y = -angle;
+                    scene.add(person);
+                }
+            }
+            
+            // Simple trees
+            for (let i = 0; i < 16; i++) {
+                const angle = (i / 16) * Math.PI * 2;
+                const distance = trackRadius + 25;
+                
+                // Tree trunk
+                const trunkGeometry = new THREE.CylinderGeometry(0.4, 0.6, 4, 8);
+                const trunkMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513 });
+                const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                trunk.position.set(
+                    Math.sin(angle) * distance,
+                    2,
+                    Math.cos(angle) * distance
+                );
+                scene.add(trunk);
+                
+                // Tree top
+                const treeTopGeometry = new THREE.ConeGeometry(2, 5, 8);
+                const treeTopMaterial = new THREE.MeshBasicMaterial({ color: 0x228B22 });
+                const treeTop = new THREE.Mesh(treeTopGeometry, treeTopMaterial);
+                treeTop.position.set(
+                    Math.sin(angle) * distance,
+                    4.5,
+                    Math.cos(angle) * distance
+                );
+                scene.add(treeTop);
+            }
+        }
+
+        function createSimpleRunners() {
+            // Create player (vaper) - bright red
+            const playerGeometry = new THREE.SphereGeometry(0.8, 16, 16);
+            const playerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            player = new THREE.Mesh(playerGeometry, playerMaterial);
+            player.position.set(0, 1, trackRadius - 2);
+            scene.add(player);
+            
+            // Create opponent (healthy) - bright blue
+            const opponentGeometry = new THREE.SphereGeometry(0.8, 16, 16);
+            const opponentMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+            opponent = new THREE.Mesh(opponentGeometry, opponentMaterial);
+            opponent.position.set(0, 1, trackRadius + 2);
+            scene.add(opponent);
+        }
+
+        function setFirstPersonCamera() {
+            camera.position.set(0, 1.6, 0);
+            camera.rotation.set(0, 0, 0);
+        }
+
+        function setThirdPersonCamera() {
+            camera.position.set(0, 15, 25);
+            camera.lookAt(0, 0, 0);
+        }
+
+        function toggleCameraView() {
+            gameState.isFirstPersonView = !gameState.isFirstPersonView;
+            if (gameState.isFirstPersonView) {
+                setFirstPersonCamera();
+                document.getElementById('viewToggle').textContent = "THIRD PERSON VIEW";
+            } else {
+                setThirdPersonCamera();
+                document.getElementById('viewToggle').textContent = "FIRST PERSON VIEW";
+            }
+        }
+
+        function updateCamera() {
+            if (gameState.isFirstPersonView) {
+                camera.position.x = player.position.x;
+                camera.position.z = player.position.z;
+                camera.rotation.y = gameState.playerAngle + Math.PI;
+            }
+        }
+
+        function setupEventListeners() {
+            // Mouse controls
+            document.addEventListener('mousedown', (e) => {
+                gameState.mouseDown = true;
+                gameState.lastMouseX = e.clientX;
+            });
+            
+            document.addEventListener('mouseup', () => {
+                gameState.mouseDown = false;
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (gameState.mouseDown && gameState.raceStarted && !gameState.raceFinished && gameState.lungCapacity > 0) {
+                    const deltaX = e.clientX - gameState.lastMouseX;
+                    gameState.playerSpeed = Math.min(15, gameState.playerSpeed + Math.abs(deltaX) * 0.1);
+                    gameState.lastMouseX = e.clientX;
+                }
+            });
+            
+            // Touch support
+            document.addEventListener('touchstart', (e) => {
+                gameState.mouseDown = true;
+                gameState.lastMouseX = e.touches[0].clientX;
+            });
+            
+            document.addEventListener('touchend', () => {
+                gameState.mouseDown = false;
+            });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (gameState.mouseDown && gameState.raceStarted && !gameState.raceFinished && gameState.lungCapacity > 0) {
+                    const deltaX = e.touches[0].clientX - gameState.lastMouseX;
+                    gameState.playerSpeed = Math.min(15, gameState.playerSpeed + Math.abs(deltaX) * 0.05);
+                    gameState.lastMouseX = e.touches[0].clientX;
+                }
+            });
+            
+            // Button events
+            document.getElementById('viewToggle').addEventListener('click', toggleCameraView);
+            document.getElementById('helpButton').addEventListener('click', showHelp);
+            document.getElementById('restartButton').addEventListener('click', resetRace);
+            
+            // Window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function showHelp() {
+            alert("HOW TO PLAY:\n\n- Click and drag horizontally to run faster\n- The faster you drag, the faster you run\n- As a vaper, your lung capacity decreases as you run\n- Try to complete 3 laps while managing your lung capacity");
+        }
+
+        function resetRace() {
+            gameState.playerSpeed = 0;
+            gameState.opponentSpeed = 8;
+            gameState.lungCapacity = 100;
+            gameState.raceStarted = false;
+            gameState.raceFinished = false;
+            gameState.playerAngle = 0;
+            gameState.opponentAngle = 0;
+            gameState.currentLap = 1;
+            
+            player.position.set(0, 1, trackRadius - 2);
+            opponent.position.set(0, 1, trackRadius + 2);
+            
+            document.getElementById('completionScreen').style.display = 'none';
+            document.getElementById('healthBar').style.width = '100%';
+            document.getElementById('lungCapacity').textContent = '100';
+            document.getElementById('lapNumber').textContent = '1';
+            document.getElementById('vapingEffect').style.opacity = 0;
+            document.getElementById('coughOverlay').style.opacity = 0;
+            
+            // Reset effects
+            document.getElementById('effectShortness').classList.remove('visible');
+            document.getElementById('effectCoughing').classList.remove('visible');
+            document.getElementById('effectFatigue').classList.remove('visible');
+            
+            setTimeout(() => {
+                gameState.raceStarted = true;
+                document.getElementById('instructions').innerHTML = 
+                    '<p class="pulse">RACE STARTED! Click and drag to run!</p>';
+            }, 3000);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (gameState.raceStarted && !gameState.raceFinished) {
+                // Update player position
+                gameState.playerAngle += gameState.playerSpeed * 0.003;
+                player.position.x = Math.sin(gameState.playerAngle) * (trackRadius - 2);
+                player.position.z = Math.cos(gameState.playerAngle) * (trackRadius - 2);
+                
+                // Update opponent position
+                gameState.opponentAngle += gameState.opponentSpeed * 0.003;
+                opponent.position.x = Math.sin(gameState.opponentAngle) * (trackRadius + 2);
+                opponent.position.z = Math.cos(gameState.opponentAngle) * (trackRadius + 2);
+                
+                // Update camera
+                updateCamera();
+                
+                // Apply vaping effects
+                if (gameState.playerSpeed > 0) {
+                    gameState.lungCapacity = Math.max(0, gameState.lungCapacity - gameState.playerSpeed * 0.03);
+                    document.getElementById('lungCapacity').textContent = Math.round(gameState.lungCapacity);
+                    document.getElementById('healthBar').style.width = gameState.lungCapacity + '%';
+                    
+                    // Visual effects
+                    const vapingEffect = document.getElementById('vapingEffect');
+                    if (gameState.lungCapacity < 70) {
+                        vapingEffect.style.opacity = (100 - gameState.lungCapacity) / 100 * 0.6;
+                        document.getElementById('effectShortness').classList.add('visible');
+                    }
+                    
+                    // Coughing
+                    if (gameState.lungCapacity < 40) {
+                        gameState.coughTimer++;
+                        if (gameState.coughTimer > 90) {
+                            document.getElementById('coughOverlay').style.opacity = 0.7;
+                            document.getElementById('effectCoughing').classList.add('visible');
+                            setTimeout(() => {
+                                document.getElementById('coughOverlay').style.opacity = 0;
+                            }, 300);
+                            gameState.coughTimer = 0;
+                            gameState.playerSpeed = Math.max(0, gameState.playerSpeed - 3);
+                        }
+                    }
+                    
+                    // Fatigue
+                    if (gameState.lungCapacity < 20) {
+                        document.getElementById('effectFatigue').classList.add('visible');
+                        gameState.playerSpeed = Math.max(0, gameState.playerSpeed - 0.08);
+                    }
+                    
+                    // Natural speed decay
+                    gameState.playerSpeed = Math.max(0, gameState.playerSpeed - 0.03);
+                }
+                
+                // Update UI
+                document.getElementById('playerSpeed').textContent = Math.round(gameState.playerSpeed);
+                document.getElementById('opponentSpeed').textContent = Math.round(gameState.opponentSpeed);
+                
+                // Check lap completion
+                const playerLapProgress = (gameState.playerAngle / (Math.PI * 2)) % 1;
+                if (playerLapProgress < 0.01 && gameState.playerAngle > Math.PI * 2) {
+                    gameState.currentLap++;
+                    document.getElementById('lapNumber').textContent = gameState.currentLap;
+                    
+                    if (gameState.currentLap > gameState.totalLaps) {
+                        gameState.raceFinished = true;
+                        document.getElementById('completionScreen').style.display = 'flex';
+                    }
+                }
+            }
+            
+            // Render scene
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // 2D fallback if 3D fails
+        function init2DFallback() {
+            log("Using 2D fallback");
+            document.getElementById('instructions').innerHTML = 
+                '<p>3D mode unavailable. Using 2D simulation.</p>' +
+                '<p>Click and drag to run! Experience how vaping affects performance.</p>';
+            
+            // Simple 2D animation would go here
+        }
+
+        // Start the game when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
