@@ -415,10 +415,41 @@
     fadeEl.classList.add('hidden');
   }
 
-  // UPDATED: Now goes to track video instead of classroom
   function goToClassroom() {
-    fadeAndGo(TO_CLASSROOM); // This now points to Track.mp4 video
-  }
+    console.log('🎬 Navigating to classroom video...');
+    
+    // First check if we're coming from lungs scene
+    const currentPath = window.location.pathname;
+    console.log('Current path:', currentPath);
+    
+    // Try multiple possible paths for the classroom video
+    const possiblePaths = [
+        'assets/video/classroom.mp4',
+        '../assets/video/classroom.mp4',
+        './assets/video/classroom.mp4'
+    ];
+    
+    // Test which path works
+    testVideoPath(possiblePaths[0]); // Test the primary path
+    
+    fadeAndGo(possiblePaths[0]);
+}
+
+// Add this helper function to debug path issues
+function testVideoPath(path) {
+    console.log('🔍 Testing video path:', path);
+    fetch(path, { method: 'HEAD' })
+        .then(response => {
+            if (response.ok) {
+                console.log('✅ Video found at:', path);
+            } else {
+                console.error('❌ Video not found at:', path, 'Status:', response.status);
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error accessing video at', path, ':', error);
+        });
+}
 
   function showContinueButton() {
     continueBtn.style.display = 'block';
@@ -786,4 +817,5 @@
 </script>
 </body>
 </html>
+
 
