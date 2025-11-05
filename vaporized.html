@@ -426,31 +426,25 @@
   function initializeAudio() {
     console.log("🎵 Initializing audio system...");
     
-    // Set up both audio elements
+    // Set up both audio elements with proper attributes
     cheeringCrowd.volume = 0.8;
     sadCrowd.volume = 0.8;
-    
-    // Preload both audio files
-    cheeringCrowd.load();
-    sadCrowd.load();
-    
-    // Force intro music to play
-    forceIntroMusicPlayback();
-  }
-
-  function forceIntroMusicPlayback() {
-    console.log("🔊 Forcing intro music playback...");
-    
     introMusic.volume = 0.7;
+    introMusic.loop = true;
     
-    const playIntro = () => {
-      introMusic.play().then(() => {
-        console.log("✅ Intro music playing automatically");
-      }).catch(e => {
-        console.log("❌ Autoplay blocked, using fallback...");
-        createSilentInteraction();
-      });
-    };
+    // Try to play intro music immediately
+    playIntroMusic();
+}
+
+function playIntroMusic() {
+    console.log("🎶 Attempting to play intro music...");
+    
+    introMusic.play().then(() => {
+        console.log("✅ Intro music playing successfully");
+    }).catch(error => {
+        console.log("❌ Intro music autoplay blocked:", error);
+    });
+}
     
     setTimeout(playIntro, 100);
   }
@@ -775,5 +769,6 @@ function showConsequence(isNegative) {
 </script>
 </body>
 </html>
+
 
 
