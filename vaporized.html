@@ -479,39 +479,28 @@
     }, 500);
   }
 
-  // Play cheering crowd audio for positive choice
-  function playCheeringCrowd() {
-    if (cheeringAudioPlayed) return;
+  // Play cheering crowd audio for positive choice (No Thanks)
+function playCheeringCrowd() {
+    console.log("🎉 Attempting to play reward_cheer.mp3...");
     
-    console.log("🎉 Playing reward_cheer.mp3...");
-    
+    // Reset and prepare audio
     cheeringCrowd.currentTime = 0;
     cheeringCrowd.volume = 0.8;
     
-    const playAttempt = cheeringCrowd.play();
-    
-    if (playAttempt !== undefined) {
-      playAttempt.then(() => {
+    // SIMPLIFIED - Just try to play directly
+    cheeringCrowd.play().then(() => {
         console.log("✅ Cheering audio playing successfully!");
         cheeringAudioPlayed = true;
-      }).catch(error => {
-        console.log("❌ Cheering audio blocked, will play on next interaction");
-        
-        const enableAudio = () => {
-          console.log("🖱️ User interaction detected, playing cheering audio");
-          cheeringCrowd.play().then(() => {
-            console.log("✅ Cheering audio playing after interaction!");
-            cheeringAudioPlayed = true;
-          }).catch(e => {
-            console.log("❌ Final cheering audio failure");
-          });
-          document.removeEventListener('click', enableAudio);
-        };
-        
-        document.addEventListener('click', enableAudio, { once: true });
-      });
-    }
-  }
+    }).catch(error => {
+        console.log("❌ Cheering audio failed:", error);
+        // One retry attempt
+        setTimeout(() => {
+            cheeringCrowd.play().catch(e => {
+                console.log("❌ Final cheering audio failure");
+            });
+        }, 100);
+    });
+}
 
   // Play sad crowd audio for negative choice
   function playSadCrowd() {
@@ -786,4 +775,5 @@ function showConsequence(isNegative) {
 </script>
 </body>
 </html>
+
 
