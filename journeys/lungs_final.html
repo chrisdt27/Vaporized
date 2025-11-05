@@ -523,7 +523,35 @@
 
       function goToClassroom(){ 
     console.log('NAVIGATING TO: classroom video');
-    window.location.href = "../assets/video/classroom.mp4";
+    
+    // Test multiple possible paths
+    const possiblePaths = [
+        "assets/video/classroom.mp4",
+        "../assets/video/classroom.mp4", 
+        "/assets/video/classroom.mp4",
+        "./assets/video/classroom.mp4",
+        "video/classroom.mp4"
+    ];
+    
+    console.log('Testing possible paths:', possiblePaths);
+    
+    // Try the most likely path first
+    const videoPath = "assets/video/classroom.mp4";
+    console.log('Attempting navigation to:', videoPath);
+    
+    // Add timeout to detect if navigation failed
+    let navigationFailed = false;
+    const originalHref = window.location.href;
+    
+    setTimeout(() => {
+        if (window.location.href === originalHref) {
+            navigationFailed = true;
+            console.error('Navigation failed - page did not change');
+            alert('Navigation failed! File not found at: ' + videoPath + '\n\nCheck that classroom.mp4 exists in the assets/video folder.');
+        }
+    }, 2000);
+    
+    window.location.href = videoPath;
 }
 
       function showLatePrompt(){ 
@@ -671,4 +699,5 @@
 </body>
 
 </html>
+
 
