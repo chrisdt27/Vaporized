@@ -14,6 +14,7 @@
 <link rel="preload" href="assets/audio/sad_crowd.mp3" as="audio">
 <link rel="preload" href="assets/00_intro_1080p24.mp4" as="video">
 <link rel="preload" href="assets/01_parking_offer_1080p24.mp4" as="video">
+<link rel="preload" href="assets/video/classroom.mp4" as="video"> <!-- ADDED: Preload classroom video -->
 <style>
   :root {
     --bg:#000; --fg:#fff; --muted:#bbb;
@@ -349,7 +350,7 @@
   </div>
 
   <!-- Continue to Classroom Button -->
-  <button id="continueBtn" onclick="goToClassroom()">Continue to Track Practice</button>
+  <button id="continueBtn" onclick="playClassroomVideo()">Continue to Track Practice</button>
 
   <!-- Fade overlay starts visible and becomes transparent after loading -->
   <div id="fade" class="hidden"></div>
@@ -359,9 +360,9 @@
   // -------- Paths (UPDATED FOR NEW FLOW) ----------
   const INTRO      = 'assets/00_intro_1080p24.mp4';
   const PARKING    = 'assets/01_parking_offer_1080p24.mp4';
+  const CLASSROOM_VIDEO = 'assets/video/classroom.mp4'; // CHANGED: Direct path to classroom video
   const TO_VR      = 'journeys/mouth_final.html';
-  const TO_CLASSROOM = 'assets/video/Track.mp4'; // CHANGED: Now points to track video
-  const TO_PART3   = 'part3-vaping-impact.html';  // ADDED: Path to Part 3 experience
+  const TO_PART3   = 'part3-vaping-impact.html';  // Path to Part 3 experience
 
   // -------- DOM ----------
   const vid     = document.getElementById('vid');
@@ -415,43 +416,49 @@
     fadeEl.classList.add('hidden');
   }
 
-  function goToClassroom() {
-    console.log('🎬 Navigating to classroom video...');
+  // NEW FUNCTION: Play classroom video directly
+  function playClassroomVideo() {
+    console.log('🎬 Playing classroom video...');
     
-    // First check if we're coming from lungs scene
-    const currentPath = window.location.pathname;
-    console.log('Current path:', currentPath);
+    // Hide continue button during video playback
+    continueBtn.style.display = 'none';
     
-    // Try multiple possible paths for the classroom video
-    const possiblePaths = [
-        'assets/video/classroom.mp4',
-        '../assets/video/classroom.mp4',
-        './assets/video/classroom.mp4'
-    ];
+    // Play the classroom video directly
+    vid.src = CLASSROOM_VIDEO;
+    vid.loop = false;
+    vid.muted = false;
     
-    // Test which path works
-    testVideoPath(possiblePaths[0]); // Test the primary path
+    vid.onloadeddata = () => {
+      vid.play().then(() => {
+        console.log('✅ Classroom video playing');
+        
+        // When video ends, show continue button for Part 3
+        vid.onended = () => {
+          console.log('🏁 Classroom video ended - ready for Part 3');
+          // Option 1: Auto-continue to Part 3
+          // fadeAndGo(TO_PART3);
+          
+          // Option 2: Show continue button for Part 3
+          continueBtn.textContent = 'Continue to Part 3';
+          continueBtn.onclick = () => fadeAndGo(TO_PART3);
+          continueBtn.style.display = 'block';
+        };
+      }).catch(error => {
+        console.error('❌ Failed to play classroom video:', error);
+        showError('Video playback failed: ' + error.message);
+      });
+    };
     
-    fadeAndGo(possiblePaths[0]);
-}
-
-// Add this helper function to debug path issues
-function testVideoPath(path) {
-    console.log('🔍 Testing video path:', path);
-    fetch(path, { method: 'HEAD' })
-        .then(response => {
-            if (response.ok) {
-                console.log('✅ Video found at:', path);
-            } else {
-                console.error('❌ Video not found at:', path, 'Status:', response.status);
-            }
-        })
-        .catch(error => {
-            console.error('❌ Error accessing video at', path, ':', error);
-        });
-}
+    vid.onerror = () => {
+      console.error('❌ Classroom video failed to load');
+      showError('Classroom video failed to load. Check file path: ' + vid.src);
+    };
+    
+    vid.load();
+  }
 
   function showContinueButton() {
+    console.log('🔄 Showing continue button for classroom video');
     continueBtn.style.display = 'block';
   }
 
@@ -746,7 +753,7 @@ function testVideoPath(path) {
   // Initialize when page loads
   window.addEventListener('load', init);
 
-  // Event Listeners
+  // Event Listeners - UPDATED: Now play classroom video after lungs scene
   btnVR.addEventListener('click',  ()=> {
     showConsequence(true);
   });
@@ -758,12 +765,14 @@ function testVideoPath(path) {
   negativeContinue.addEventListener('click', () => {
     hideConsequences();
     fadeAndGo(TO_VR);
+    // After VR journey completes, show button to play classroom video
     setTimeout(showContinueButton, 45000);
   });
 
   positiveContinue.addEventListener('click', () => {
     hideConsequences();
     fadeAndGo(TO_VR);
+    // After VR journey completes, show button to play classroom video
     setTimeout(showContinueButton, 45000);
   });
 
@@ -784,7 +793,7 @@ function testVideoPath(path) {
     if(e.key==='2') {
       showConsequence(false);
     }
-    if(e.key==='3') goToClassroom();
+    if(e.key==='3') playClassroomVideo(); // CHANGED: Now plays classroom video
     if(e.key==='Escape' && starwarsIntro.style.display === 'block') {
       starwarsIntro.style.display = 'none';
       introMusic.pause();
@@ -817,5 +826,3 @@ function testVideoPath(path) {
 </script>
 </body>
 </html>
-
-
