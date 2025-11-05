@@ -290,7 +290,7 @@
   <button id="vrToggle">Enter VR</button>
 
   <!-- Audio Elements - INCLUDES SAD CROWD -->
-  <audio id="introMusic" src="assets/audio/intro.mp3" preload="auto" autoplay loop></audio>
+  <audio id="introMusic" src="assets/audio/intro.mp3" preload="auto"></audio>
   <audio id="cheeringCrowd" src="assets/audio/reward_cheer.mp3" preload="auto"></audio>
   <audio id="sadCrowd" src="assets/audio/sad_crowd.mp3" preload="auto"></audio>
 
@@ -433,49 +433,35 @@
     cheeringCrowd.load();
     sadCrowd.load();
     
-    // Force intro music to play
-    forceIntroMusicPlayback();
+    // Force intro music to play with user interaction
+    document.addEventListener('click', startIntroMusic, { once: true });
+    document.addEventListener('touchstart', startIntroMusic, { once: true });
+    document.addEventListener('keydown', startIntroMusic, { once: true });
+    
+    // Also try to start after a short delay
+    setTimeout(startIntroMusic, 1000);
   }
 
-  function forceIntroMusicPlayback() {
-    console.log("🔊 Forcing intro music playback...");
+  function startIntroMusic() {
+    console.log("🔊 Starting intro music...");
     
     introMusic.volume = 0.7;
+    introMusic.loop = true;
     
-    const playIntro = () => {
-      introMusic.play().then(() => {
-        console.log("✅ Intro music playing automatically");
-      }).catch(e => {
-        console.log("❌ Autoplay blocked, using fallback...");
-        createSilentInteraction();
-      });
-    };
-    
-    setTimeout(playIntro, 100);
-  }
-
-  function createSilentInteraction() {
-    const silentButton = document.createElement('button');
-    silentButton.style.cssText = 'position:absolute;opacity:0;width:1px;height:1px;z-index:-1;';
-    silentButton.textContent = 'silent';
-    document.body.appendChild(silentButton);
-    
-    setTimeout(() => {
-      silentButton.click();
-      console.log("🔄 Silent interaction triggered");
-      
-      setTimeout(() => {
+    introMusic.play().then(() => {
+      console.log("✅ Intro music playing successfully");
+    }).catch(e => {
+      console.log("❌ Autoplay blocked, will play on next interaction");
+      // Add click handler to entire document for audio unlock
+      document.addEventListener('click', function unlockAudio() {
         introMusic.play().then(() => {
-          console.log("✅ Intro music playing after silent interaction");
+          console.log("✅ Intro music playing after interaction");
         }).catch(e => {
-          console.log("❌ Final audio failure, continuing without sound");
+          console.log("❌ Final audio failure");
         });
-      }, 100);
-      
-      setTimeout(() => {
-        document.body.removeChild(silentButton);
-      }, 1000);
-    }, 500);
+        document.removeEventListener('click', unlockAudio);
+      }, { once: true });
+    });
   }
 
   // Play cheering crowd audio for positive choice
