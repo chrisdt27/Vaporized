@@ -295,6 +295,31 @@ display: none;
 z-index: 1000;
 }
 
+/* Voice Controls */
+.voice-controls {
+position: fixed;
+top: 20px;
+right: 20px;
+display: flex;
+gap: 10px;
+z-index: 10010;
+}
+
+.voice-btn {
+background: rgba(255,255,255,0.2);
+color: white;
+border: 1px solid rgba(255,255,255,0.3);
+padding: 8px 12px;
+border-radius: 4px;
+cursor: pointer;
+font-size: 14px;
+font-family: system-ui;
+}
+
+.voice-btn:hover {
+background: rgba(255,255,255,0.3);
+}
+
 @media (max-width: 768px) {
 .board-inner {
 padding: 14px 14px 16px;
@@ -310,6 +335,12 @@ font-size: 18px;
 </style>
 </head>
 <body>
+  <!-- Voice Controls -->
+  <div class="voice-controls">
+    <button class="voice-btn" onclick="repeatCurrentQuestion()">🔊 Repeat Question</button>
+    <button class="voice-btn" onclick="skipToNextQuestion()">⏭️ Skip Question</button>
+  </div>
+
   <!-- VIDEO STAGE - Plays first -->
   <div id="videoStage">
     <video id="classroomVideo" preload="auto" playsinline></video>
@@ -320,7 +351,7 @@ font-size: 18px;
   <div class="app">
     <div class="hud">
       <div class="hud-pill" id="hudQuestion">Question 1 of 4</div>
-      <div class="hud-pill">Click or tap an answer (audio will play)</div>
+      <div class="hud-pill">Click or tap an answer</div>
     </div>
 
     <div class="board-wrap">
@@ -372,6 +403,107 @@ font-size: 18px;
 // CHANGED: Updated to point to part3.html
 const PRACTICE_URL = 'part3.html';
 
+// SIMPLIFIED TTS SYSTEM - Better Natural Voice
+class NaturalTTS {
+  constructor() {
+    this.isSpeaking = false;
+    this.currentUtterance = null;
+    this.init();
+  }
+
+  init() {
+    // Wait for voices to load
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = () => console.log('Voices loaded');
+    }
+  }
+
+  getNaturalVoice() {
+    const voices = speechSynthesis.getVoices();
+    
+    // Prioritize natural-sounding voices
+    const naturalVoices = [
+      'Google UK English Male',
+      'Google US English',
+      'Microsoft David Desktop',
+      'Samantha',
+      'Daniel',
+      'Karen',
+      'Victoria',
+      'Alex'
+    ];
+    
+    for (const voiceName of naturalVoices) {
+      const voice = voices.find(v => 
+        v.name.includes(voiceName) && v.lang.startsWith('en')
+      );
+      if (voice) {
+        console.log('Selected natural voice:', voice.name);
+        return voice;
+      }
+    }
+    
+    return voices.find(voice => voice.lang.startsWith('en-')) || voices[0];
+  }
+
+  speak(text, onComplete = null) {
+    if (!text || !('speechSynthesis' in window)) return;
+    
+    this.stop();
+    
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      
+      // Optimized for natural human speech
+      utterance.rate = 0.82;    // Slightly slower for clarity
+      utterance.pitch = 1.1;    // Slightly higher for warmth
+      utterance.volume = 1.0;
+      utterance.lang = 'en-US';
+
+      const voice = this.getNaturalVoice();
+      if (voice) utterance.voice = voice;
+
+      utterance.onstart = () => {
+        this.isSpeaking = true;
+        console.log('Speaking:', text);
+      };
+
+      utterance.onend = () => {
+        this.isSpeaking = false;
+        this.currentUtterance = null;
+        console.log('Finished speaking');
+        if (onComplete) onComplete();
+      };
+
+      utterance.onerror = (event) => {
+        this.isSpeaking = false;
+        this.currentUtterance = null;
+        console.error('TTS Error:', event);
+        if (onComplete) onComplete();
+      };
+
+      this.currentUtterance = utterance;
+      speechSynthesis.speak(utterance);
+      
+    } catch (error) {
+      console.error('TTS failed:', error);
+      this.isSpeaking = false;
+      if (onComplete) onComplete();
+    }
+  }
+
+  stop() {
+    if (this.isSpeaking) {
+      speechSynthesis.cancel();
+      this.isSpeaking = false;
+      this.currentUtterance = null;
+    }
+  }
+}
+
+// Initialize natural TTS
+const tts = new NaturalTTS();
+
 // VIDEO PLAYER SETUP
 const videoStage = document.getElementById('videoStage');
 const classroomVideo = document.getElementById('classroomVideo');
@@ -396,7 +528,7 @@ classroomVideo.play().catch(error => {
   console.log('Video autoplay blocked, will play on interaction');
 });
 
-// QUIZ CODE (existing functionality)
+// QUIZ DATA
 const quiz = [
 {
 id: 'Q1',
@@ -408,7 +540,7 @@ C: 'Brain stem',
 D: 'Occipital lobe'
 },
 correct: 'A',
-feedback: 'Nicotine overloads the prefrontal cortex, the part that helps you focus, plan, and say no.'
+feedback: 'That\'s correct. Nicotine overloads the prefrontal cortex, the part that helps you focus, plan, and say no to impulses.'
 },
 {
 id: 'Q2',
@@ -420,7 +552,7 @@ C: 'See the board clearly',
 D: 'Hear the teacher\'s voice'
 },
 correct: 'B',
-feedback: 'Nicotine scrambles activity in the hippocampus, making new memories and learning harder.'
+feedback: 'Exactly right. Nicotine scrambles activity in the hippocampus, making new memories and learning much harder.'
 },
 {
 id: 'Q3',
@@ -432,7 +564,7 @@ C: 'Builds more muscle tissue',
 D: 'Improves lung flexibility'
 },
 correct: 'B',
-feedback: 'Nicotine overstimulates the reward circuit, making your brain pay attention to the vape instead of your goals.'
+feedback: 'Correct. Nicotine overstimulates the reward circuit, making your brain pay attention to the vape instead of your goals.'
 },
 {
 id: 'Q4',
@@ -444,7 +576,7 @@ C: 'Spinal cord',
 D: 'Jaw muscles'
 },
 correct: 'A',
-feedback: 'Nicotine messes with the amygdala, the brain\'s emotion hub, which can amplify stress and mood swings.'
+feedback: 'That\'s right. Nicotine messes with the amygdala, the brain\'s emotion hub, which can amplify stress and mood swings.'
 }
 ];
 
@@ -464,38 +596,45 @@ let index = 0;
 let score = 0;
 let locked = false;
 
-// ---- Narration (Web Speech API) ----
-const hasSpeech = typeof window !== 'undefined' && 'speechSynthesis' in window;
-let currentUtterance = null;
-
-function speak(text) {
-if (!hasSpeech || !text) return;
-try {
-window.speechSynthesis.cancel();
-const u = new SpeechSynthesisUtterance(text);
-u.rate = 1.0; // pacing
-u.pitch = 1.0;
-u.volume = 1.0;
-currentUtterance = u;
-window.speechSynthesis.speak(u);
-} catch (e) {
-// fail silently
-}
+// ---- SIMPLIFIED NARRATION - Only questions and feedback ----
+function speakQuestion() {
+  if (index < quiz.length) {
+    const q = quiz[index];
+    // Only speak the question - no options
+    tts.speak(`Question ${index + 1}: ${q.question}`);
+  }
 }
 
-function speakAnswerFeedback(q, isCorrect, chosenKey) {
-const correctKey = q.correct;
-const correctText = q.options[correctKey];
-let line;
-
-if (isCorrect) {
-// "Correct. [feedback]"
-line = `Correct. ${q.feedback}`;
-} else {
-// "No, that's incorrect. The correct answer is A, Prefrontal cortex. [feedback]"
-line = `No, that's incorrect. The correct answer is ${correctKey}, ${correctText}. ${q.feedback}`;
+function speakFeedback(q, isCorrect) {
+  // Only speak the educational feedback - no "correct/incorrect" announcements
+  tts.speak(q.feedback);
 }
-speak(line);
+
+function advanceToNextQuestion() {
+  index++;
+  if (index < quiz.length) {
+    renderQuestion();
+  } else {
+    endQuiz();
+  }
+}
+
+// Voice control functions
+function repeatCurrentQuestion() {
+  tts.stop();
+  if (index < quiz.length) {
+    speakQuestion();
+  }
+}
+
+function skipToNextQuestion() {
+  tts.stop();
+  if (index < quiz.length - 1) {
+    index++;
+    renderQuestion();
+  } else if (index === quiz.length - 1) {
+    endQuiz();
+  }
 }
 
 // ---- UI helpers ----
@@ -531,6 +670,9 @@ btn.disabled = false;
 btn.style.display = 'inline-flex';
 });
 updateHUD();
+
+// Speak the question only (no options)
+setTimeout(speakQuestion, 800);
 }
 
 function flashBoard(success) {
@@ -552,10 +694,10 @@ answerButtons.forEach(btn=>{
 btn.disabled = true;
 const k = btn.dataset.key;
 if (k === correctKey) {
-btn.classList.add('correct');
+  btn.classList.add('correct');
 }
 if (k === key && !isCorrect) {
-btn.classList.add('incorrect');
+  btn.classList.add('incorrect');
 }
 });
 
@@ -572,28 +714,19 @@ flashBoard(false);
 feedback.classList.add('visible');
 updateHUD();
 
-// Speak narration line based on correctness
-speakAnswerFeedback(q, isCorrect, key);
-
-setTimeout(()=>{
-index++;
-if (index < quiz.length) {
-renderQuestion();
-} else {
-endQuiz();
-}
-}, 2600);
+// Speak only the educational feedback and advance when done
+tts.speak(q.feedback, advanceToNextQuestion);
 }
 
 function endQuiz() {
 const percent = Math.round((score / quiz.length) * 100);
 let msg;
 if (percent === 100) {
-msg = 'Perfect score! Your brain is on it.';
+msg = 'Perfect score! Your brain knowledge is excellent.';
 } else if (percent >= 75) {
-msg = `Nice work — you scored ${percent}%. Protect that brain.`;
+msg = `Great work — you scored ${percent}%. You understand how vaping affects the brain.`;
 } else {
-msg = `You scored ${percent}%. The brain remembers: vaping hits focus, memory, reward, and mood.`;
+msg = `You scored ${percent}%. Remember what you learned: vaping impacts focus, memory, rewards, and emotions.`;
 }
 questionText.textContent = msg;
 feedbackIcon.textContent = '🏆';
@@ -603,8 +736,8 @@ answerButtons.forEach(btn => { btn.style.display='none'; });
 ctaBar.style.display = 'flex';
 hudQuestion.textContent = 'Quiz complete';
 
-// Final spoken line
-speak(`Quiz complete. ${msg} Ready to see how this plays out on the field?`);
+// Final spoken summary
+tts.speak(`${msg} Ready to continue to practice?`);
 }
 
 answerButtons.forEach(btn => {
@@ -613,8 +746,9 @@ handleAnswer(btn.dataset.key);
 });
 });
 
-// CHANGED: Simplified navigation function
+// Navigation function
 function goToPractice() {
+    tts.stop();
     window.location.href = PRACTICE_URL;
 }
 ctaPractice.addEventListener('click', goToPractice);
