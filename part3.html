@@ -14,6 +14,8 @@
 <link rel="preload" href="assets/audio/sad_crowd.mp3" as="audio">
 <link rel="preload" href="assets/00_intro_1080p24.mp4" as="video">
 <link rel="preload" href="assets/01_parking_offer_1080p24.mp4" as="video">
+<link rel="preload" href="assets/video/classroom.mp4" as="video">
+<link rel="preload" href="assets/video/Track.mp4" as="video">
 <style>
   :root {
     --bg:#000; --fg:#fff; --muted:#bbb;
@@ -41,7 +43,7 @@
   /* Error bar */
   #err{position:fixed;left:0;right:0;bottom:0;background:rgba(200,0,0,.75);padding:6px 10px;font-size:12px;display:none;white-space:pre-wrap;z-index:1001}
 
-  /* Continue button for Classroom transition */
+  /* Continue button for transitions */
   #continueBtn {
     position: fixed;
     bottom: 40px;
@@ -136,7 +138,7 @@
     cursor: pointer;
     z-index: 1003;
     font-family: system-ui;
-    display: none; /* Hidden until VR is available */
+    display: none;
   }
   
   #vrToggle:hover {
@@ -152,7 +154,7 @@
     font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
     perspective: 400px;
     overflow: hidden;
-    display: block; /* Changed to display immediately */
+    display: block;
     z-index: 10000;
   }
 
@@ -160,39 +162,39 @@
     position: absolute;
     top: 0;
     left: 50%;
-    width: 1400px; /* Even wider for maximum screen coverage */
-    margin-left: -700px; /* Adjusted for new width */
+    width: 1400px;
+    margin-left: -700px;
     text-align: center;
     transform-origin: 50% 100%;
     transform: rotateX(25deg);
-    animation: crawl 30s linear; /* Increased to 30 seconds for slower scrolling */
+    animation: crawl 30s linear;
   }
 
   .title {
-    font-size: 108px; /* Increased by 20% from 90px */
+    font-size: 108px;
     font-weight: 900;
-    margin-bottom: 120px; /* Increased spacing */
+    margin-bottom: 120px;
     text-transform: uppercase;
-    letter-spacing: 12px; /* Slightly increased letter spacing */
+    letter-spacing: 12px;
     color: #ffd700;
     text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700;
   }
 
   .subtitle {
-    font-size: 72px; /* Increased by 20% from 60px */
+    font-size: 72px;
     font-weight: 700;
-    margin-bottom: 96px; /* Increased spacing */
+    margin-bottom: 96px;
     color: #ffd700;
     text-shadow: 0 0 5px #ffd700;
   }
 
   .text-content {
-    font-size: 50px; /* Increased by 20% from 42px */
+    font-size: 50px;
     line-height: 1.4;
     text-align: justify;
-    margin-bottom: 120px; /* Increased spacing */
-    width: 100%; /* Ensure full width */
-    padding: 0 80px; /* Even more padding for better margins */
+    margin-bottom: 120px;
+    width: 100%;
+    padding: 0 80px;
   }
 
   .fade {
@@ -204,7 +206,6 @@
     z-index: 1;
   }
 
-  /* Crawl animation - adjusted for 30 seconds (slower) */
   @keyframes crawl {
     0% {
       top: 800px;
@@ -216,7 +217,6 @@
     }
   }
 
-  /* Star field background */
   .stars {
     position: absolute;
     top: 0;
@@ -232,7 +232,6 @@
     border-radius: 50%;
   }
 
-  /* Skip button for intro */
   #skipIntro {
     position: fixed;
     top: 20px;
@@ -252,7 +251,6 @@
     background: rgba(255,215,0,0.2);
   }
 
-  /* Loading indicator */
   #loading {
     position: fixed;
     inset: 0;
@@ -289,12 +287,12 @@
   <!-- VR Mode Toggle -->
   <button id="vrToggle">Enter VR</button>
 
-  <!-- Audio Elements - INCLUDES SAD CROWD -->
+  <!-- Audio Elements -->
   <audio id="introMusic" src="assets/audio/intro.mp3" preload="auto" autoplay loop></audio>
   <audio id="cheeringCrowd" src="assets/audio/reward_cheer.mp3" preload="auto"></audio>
   <audio id="sadCrowd" src="assets/audio/sad_crowd.mp3" preload="auto"></audio>
 
-  <!-- Star Wars Intro - Starts immediately -->
+  <!-- Star Wars Intro -->
   <div id="starwars-intro">
     <div class="stars" id="stars"></div>
     <div class="crawl" id="crawl">
@@ -313,11 +311,10 @@
   </div>
 
   <div id="stage">
-    <!-- Start muted; we unmute after the user's tap -->
     <video id="vid" playsinline preload="auto" muted></video>
   </div>
 
-  <!-- Choice UI (minimal text) -->
+  <!-- Choice UI -->
   <div id="choice">
     <div class="card">
       <h2>Take a Puff</h2>
@@ -348,21 +345,24 @@
     </div>
   </div>
 
-  <!-- Continue to Classroom Button -->
-  <button id="continueBtn" onclick="goToClassroom()">Continue to Classroom</button>
+  <!-- Continue Button -->
+  <button id="continueBtn">Continue</button>
 
-  <!-- Fade overlay starts visible and becomes transparent after loading -->
+  <!-- Fade overlay -->
   <div id="fade" class="hidden"></div>
   <div id="err"></div>
 
 <script>
-  // -------- CORRECTED PATHS FOR PROPER FLOW ----------
+  // -------- CORRECT PATHS FOR THE FULL FLOW ----------
   const INTRO      = 'assets/00_intro_1080p24.mp4';
   const PARKING    = 'assets/01_parking_offer_1080p24.mp4';
-  const TO_VR      = 'journeys/mouth_final.html';
-  const TO_CLASSROOM = 'classroom_scene.html'; // CORRECTED: Direct to classroom scene
-  const TO_TRACK   = 'assets/video/Track.html'; // Track video (if needed later)
-  const TO_PART3   = 'part3.html';              // Final 3D experience
+  const MOUTH_VR   = 'journeys/mouth_final.html';
+  const BRONCHI_VR = 'journeys/bronchi_final.html'; 
+  const LUNGS_VR   = 'journeys/lungs_final.html';
+  const CLASSROOM_VIDEO = 'assets/video/classroom.mp4';
+  const CLASSROOM_SCENE = 'classroom_scene.html';
+  const TRACK_VIDEO = 'assets/video/Track.mp4';
+  const PART3      = 'part3.html';
 
   // -------- DOM ----------
   const vid     = document.getElementById('vid');
@@ -416,38 +416,80 @@
     fadeEl.classList.add('hidden');
   }
 
-  // CORRECTED: Goes directly to classroom scene
-  function goToClassroom() {
-    console.log('Navigating to classroom scene:', TO_CLASSROOM);
-    fadeAndGo(TO_CLASSROOM);
+  // Play video and show continue button when done
+  function playVideoAndContinue(videoPath, nextAction) {
+    console.log('🎬 Playing video:', videoPath);
+    
+    continueBtn.style.display = 'none';
+    
+    vid.src = videoPath;
+    vid.loop = false;
+    vid.muted = false;
+    
+    vid.onloadeddata = () => {
+      vid.play().then(() => {
+        console.log('✅ Video playing');
+        
+        vid.onended = () => {
+          console.log('🏁 Video ended');
+          continueBtn.textContent = 'Continue';
+          continueBtn.onclick = nextAction;
+          continueBtn.style.display = 'block';
+        };
+      }).catch(error => {
+        console.error('❌ Failed to play video:', error);
+        showError('Video playback failed: ' + error.message);
+        continueBtn.style.display = 'block';
+      });
+    };
+    
+    vid.onerror = () => {
+      console.error('❌ Video failed to load:', videoPath);
+      showError('Video failed to load: ' + videoPath);
+      continueBtn.style.display = 'block';
+    };
+    
+    vid.load();
   }
 
-  function showContinueButton() {
-    console.log('Showing continue button to classroom');
-    continueBtn.style.display = 'block';
-    // Set session storage to indicate body journey completed
-    sessionStorage.setItem('bodyJourneyCompleted', 'true');
+  // -------- CORRECT FLOW FUNCTIONS ----------
+  function startBodyJourney() {
+    console.log('🚀 Starting body journey...');
+    fadeAndGo(MOUTH_VR);
   }
 
-  // -------- AUDIO SYSTEM WITH BOTH POSITIVE AND NEGATIVE FEEDBACK ----------
+  function playClassroomVideo() {
+    playVideoAndContinue(CLASSROOM_VIDEO, goToClassroomScene);
+  }
+
+  function goToClassroomScene() {
+    console.log('🏫 Going to classroom scene...');
+    fadeAndGo(CLASSROOM_SCENE);
+  }
+
+  function playTrackVideo() {
+    playVideoAndContinue(TRACK_VIDEO, goToPart3);
+  }
+
+  function goToPart3() {
+    console.log('🎯 Going to Part 3...');
+    fadeAndGo(PART3);
+  }
+
+  // -------- AUDIO SYSTEM ----------
   function initializeAudio() {
     console.log("🎵 Initializing audio system...");
     
-    // Set up both audio elements
     cheeringCrowd.volume = 0.8;
     sadCrowd.volume = 0.8;
     
-    // Preload both audio files
     cheeringCrowd.load();
     sadCrowd.load();
     
-    // Force intro music to play
     forceIntroMusicPlayback();
   }
 
   function forceIntroMusicPlayback() {
-    console.log("🔊 Forcing intro music playback...");
-    
     introMusic.volume = 0.7;
     
     const playIntro = () => {
@@ -470,27 +512,19 @@
     
     setTimeout(() => {
       silentButton.click();
-      console.log("🔄 Silent interaction triggered");
-      
       setTimeout(() => {
-        introMusic.play().then(() => {
-          console.log("✅ Intro music playing after silent interaction");
-        }).catch(e => {
+        introMusic.play().catch(e => {
           console.log("❌ Final audio failure, continuing without sound");
         });
       }, 100);
-      
       setTimeout(() => {
         document.body.removeChild(silentButton);
       }, 1000);
     }, 500);
   }
 
-  // Play cheering crowd audio for positive choice
   function playCheeringCrowd() {
     if (cheeringAudioPlayed) return;
-    
-    console.log("🎉 Playing reward_cheer.mp3...");
     
     cheeringCrowd.currentTime = 0;
     cheeringCrowd.volume = 0.8;
@@ -499,32 +533,21 @@
     
     if (playAttempt !== undefined) {
       playAttempt.then(() => {
-        console.log("✅ Cheering audio playing successfully!");
         cheeringAudioPlayed = true;
       }).catch(error => {
-        console.log("❌ Cheering audio blocked, will play on next interaction");
-        
         const enableAudio = () => {
-          console.log("🖱️ User interaction detected, playing cheering audio");
           cheeringCrowd.play().then(() => {
-            console.log("✅ Cheering audio playing after interaction!");
             cheeringAudioPlayed = true;
-          }).catch(e => {
-            console.log("❌ Final cheering audio failure");
           });
           document.removeEventListener('click', enableAudio);
         };
-        
         document.addEventListener('click', enableAudio, { once: true });
       });
     }
   }
 
-  // Play sad crowd audio for negative choice
   function playSadCrowd() {
     if (sadAudioPlayed) return;
-    
-    console.log("😢 Playing sad_crowd.mp3...");
     
     sadCrowd.currentTime = 0;
     sadCrowd.volume = 0.8;
@@ -533,41 +556,29 @@
     
     if (playAttempt !== undefined) {
       playAttempt.then(() => {
-        console.log("✅ Sad crowd audio playing successfully!");
         sadAudioPlayed = true;
       }).catch(error => {
-        console.log("❌ Sad audio blocked, will play on next interaction");
-        
         const enableAudio = () => {
-          console.log("🖱️ User interaction detected, playing sad audio");
           sadCrowd.play().then(() => {
-            console.log("✅ Sad crowd audio playing after interaction!");
             sadAudioPlayed = true;
-          }).catch(e => {
-            console.log("❌ Final sad audio failure");
           });
           document.removeEventListener('click', enableAudio);
         };
-        
         document.addEventListener('click', enableAudio, { once: true });
       });
     }
   }
 
-  // Show consequence overlay based on choice
   function showConsequence(isNegative) {
     if (isNegative) {
       negativeConsequence.style.display = 'flex';
-      // Play sad crowd for negative choice
       setTimeout(playSadCrowd, 300);
     } else {
       positiveConsequence.style.display = 'flex';
-      // Play cheering crowd for positive choice
       setTimeout(playCheeringCrowd, 300);
     }
   }
 
-  // Hide all consequence overlays
   function hideConsequences() {
     negativeConsequence.style.display = 'none';
     positiveConsequence.style.display = 'none';
@@ -579,7 +590,6 @@
     sadAudioPlayed = false;
   }
 
-  // Create starfield for Star Wars intro
   function createStarfield() {
     for (let i = 0; i < 200; i++) {
       const star = document.createElement('div');
@@ -593,7 +603,6 @@
     }
   }
 
-  // Check for WebXR support and initialize VR toggle
   async function checkXRSupport() {
     if (navigator.xr) {
       try {
@@ -609,36 +618,29 @@
     return false;
   }
 
-  // Enter VR mode
   async function enterVR() {
     if (!navigator.xr) {
       showError('WebXR not supported in this browser');
       return;
     }
-
     try {
       xrSession = await navigator.xr.requestSession('immersive-vr', {
         optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']
       });
-      
       isVRMode = true;
       vrToggle.textContent = 'Exit VR';
       xrSession.addEventListener('end', onXRSessionEnded);
-      showError('VR Mode Active - Full implementation requires WebGL rendering');
-      
     } catch (e) {
       showError('Failed to enter VR: ' + e.message);
     }
   }
 
-  // Exit VR mode
   function exitVR() {
     if (xrSession) {
       xrSession.end();
     }
   }
 
-  // Handle XR session end
   function onXRSessionEnded() {
     xrSession = null;
     isVRMode = false;
@@ -646,7 +648,6 @@
     hideLoading();
   }
 
-  // Play Star Wars intro
   function playStarWarsIntro() {
     return new Promise((resolve) => {
       const skipHandler = () => {
@@ -658,9 +659,7 @@
           resolve();
         }, 300);
       };
-      
       skipIntro.addEventListener('click', skipHandler, { once: true });
-      
       setTimeout(() => {
         if (starwarsIntro.style.display !== 'none') {
           skipHandler();
@@ -669,24 +668,19 @@
     });
   }
 
-  // Play a src and resolve when it ends; guard timer for bad metadata
   function playUntilEnd(src){
     return new Promise((resolve, reject)=>{
       let guard=null, ended=false;
-
       vid.src = src;
       vid.loop = false;
       vid.onerror = ()=>reject(new Error('Video failed to load: ' + src));
-
       const start = ()=>{
         const dur = Number.isFinite(vid.duration) && vid.duration>0 ? vid.duration : 75;
         guard = setTimeout(()=>{ if(!ended){ cleanup(); resolve(); } }, (dur+2)*1000);
-
         vid.play()
           .then(()=>{ vid.onended = ()=>{ ended=true; cleanup(); resolve(); }; })
           .catch(err=>{ cleanup(); reject(err); });
       };
-
       const cleanup = ()=>{ clearTimeout(guard); vid.onended=null; vid.oncanplay=null; vid.onloadedmetadata=null; };
       vid.onloadedmetadata = start;
       vid.oncanplay = start;
@@ -720,7 +714,7 @@
   // Initialize when page loads
   window.addEventListener('load', init);
 
-  // Event Listeners
+  // -------- CORRECT EVENT LISTENERS FOR FULL FLOW ----------
   btnVR.addEventListener('click',  ()=> {
     showConsequence(true);
   });
@@ -729,18 +723,15 @@
     showConsequence(false);
   });
 
+  // Both choices lead to the same body journey
   negativeContinue.addEventListener('click', () => {
     hideConsequences();
-    fadeAndGo(TO_VR);
-    // Show continue button after body journey (45 seconds)
-    setTimeout(showContinueButton, 45000);
+    startBodyJourney(); // Goes to mouth_final.html
   });
 
   positiveContinue.addEventListener('click', () => {
     hideConsequences();
-    fadeAndGo(TO_VR);
-    // Show continue button after body journey (45 seconds)
-    setTimeout(showContinueButton, 45000);
+    startBodyJourney(); // Goes to mouth_final.html
   });
 
   // VR Toggle
@@ -754,33 +745,17 @@
 
   // Keyboard shortcuts
   window.addEventListener('keydown', (e)=>{
-    if(e.key==='1') {
-      showConsequence(true);
-    }
-    if(e.key==='2') {
-      showConsequence(false);
-    }
-    if(e.key==='3') goToClassroom();
+    if(e.key==='1') showConsequence(true);
+    if(e.key==='2') showConsequence(false);
+    if(e.key==='3') startBodyJourney();
     if(e.key==='Escape' && starwarsIntro.style.display === 'block') {
       starwarsIntro.style.display = 'none';
       introMusic.pause();
     }
     if(e.key === 'v' || e.key === 'V') {
       if (vrToggle.style.display !== 'none') {
-        if (isVRMode) {
-          exitVR();
-        } else {
-          enterVR();
-        }
+        if (isVRMode) exitVR(); else enterVR();
       }
-    }
-  });
-
-  // Auto-detect if we're returning from body journey and show continue button
-  window.addEventListener('pageshow', function(event) {
-    if (sessionStorage.getItem('bodyJourneyCompleted')) {
-      showContinueButton();
-      sessionStorage.removeItem('bodyJourneyCompleted');
     }
   });
 
