@@ -817,40 +817,28 @@
   function playStarWarsIntro() {
     return new Promise((resolve) => {
         const skipHandler = () => {
-            // Stop the animation immediately
-            crawl.style.animation = 'none';
-            crawl.style.display = 'none';
+            // Simply fade out the entire intro without touching the animation
+            starwarsIntro.style.opacity = '0';
+            starwarsIntro.style.transition = 'opacity 0.5s ease';
             
-            fadeEl.classList.remove('hidden');
             setTimeout(() => {
                 starwarsIntro.style.display = 'none';
                 introMusic.pause();
-                fadeEl.classList.add('hidden');
+                introMusic.currentTime = 0;
                 resolve();
-            }, 300);
+            }, 500);
         };
         
         skipIntro.addEventListener('click', skipHandler, { once: true });
         
-        // Auto-skip after animation completes (30 seconds + buffer)
+        // Auto-skip after animation would naturally complete
         setTimeout(() => {
             if (starwarsIntro.style.display !== 'none') {
-                // Stop the animation before hiding
-                crawl.style.animation = 'none';
-                crawl.style.display = 'none';
-                
-                fadeEl.classList.remove('hidden');
-                setTimeout(() => {
-                    starwarsIntro.style.display = 'none';
-                    introMusic.pause();
-                    fadeEl.classList.add('hidden');
-                    resolve();
-                }, 300);
+                skipHandler();
             }
-        }, 32000); // Slightly longer than animation duration
+        }, 31000); // Just slightly longer than the 30s animation
     });
 }
-
   function playUntilEnd(src){
     return new Promise((resolve, reject)=>{
       let guard=null, ended=false;
@@ -974,5 +962,6 @@
 </script>
 </body>
 </html>
+
 
 
