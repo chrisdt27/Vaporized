@@ -816,23 +816,40 @@
 
   function playStarWarsIntro() {
     return new Promise((resolve) => {
-      const skipHandler = () => {
-        fadeEl.classList.remove('hidden');
+        const skipHandler = () => {
+            // Stop the animation immediately
+            crawl.style.animation = 'none';
+            crawl.style.display = 'none';
+            
+            fadeEl.classList.remove('hidden');
+            setTimeout(() => {
+                starwarsIntro.style.display = 'none';
+                introMusic.pause();
+                fadeEl.classList.add('hidden');
+                resolve();
+            }, 300);
+        };
+        
+        skipIntro.addEventListener('click', skipHandler, { once: true });
+        
+        // Auto-skip after animation completes (30 seconds + buffer)
         setTimeout(() => {
-          starwarsIntro.style.display = 'none';
-          introMusic.pause();
-          fadeEl.classList.add('hidden');
-          resolve();
-        }, 300);
-      };
-      skipIntro.addEventListener('click', skipHandler, { once: true });
-      setTimeout(() => {
-        if (starwarsIntro.style.display !== 'none') {
-          skipHandler();
-        }
-      }, 30000);
+            if (starwarsIntro.style.display !== 'none') {
+                // Stop the animation before hiding
+                crawl.style.animation = 'none';
+                crawl.style.display = 'none';
+                
+                fadeEl.classList.remove('hidden');
+                setTimeout(() => {
+                    starwarsIntro.style.display = 'none';
+                    introMusic.pause();
+                    fadeEl.classList.add('hidden');
+                    resolve();
+                }, 300);
+            }
+        }, 32000); // Slightly longer than animation duration
     });
-  }
+}
 
   function playUntilEnd(src){
     return new Promise((resolve, reject)=>{
@@ -957,4 +974,5 @@
 </script>
 </body>
 </html>
+
 
