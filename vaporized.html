@@ -862,10 +862,11 @@
   async function startSequenceWithAudio(){
     vid.muted = false;
     await playStarWarsIntro();
+    // The intro is now completely hidden before we proceed
     await playUntilEnd(INTRO);
     await playUntilEnd(PARKING);
     showChoice();
-  }
+}
 
   // -------- ENHANCED INITIALIZATION ----------
   async function init() {
@@ -962,6 +963,7 @@
 </script>
 </body>
 </html>
+
 
 
 
