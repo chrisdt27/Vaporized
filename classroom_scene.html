@@ -295,12 +295,13 @@ display: none;
 z-index: 1000;
 }
 
-/* Voice Controls */
+/* Voice Controls - Positioned to the RIGHT of chalkboard */
 .voice-controls {
-position: fixed;
+position: absolute;
 top: 20px;
-right: 20px;
+right: -220px; /* Shifted further right off the chalkboard */
 display: flex;
+flex-direction: column;
 gap: 10px;
 z-index: 10010;
 }
@@ -314,6 +315,7 @@ border-radius: 4px;
 cursor: pointer;
 font-size: 14px;
 font-family: system-ui;
+white-space: nowrap;
 }
 
 .voice-btn:hover {
@@ -331,16 +333,18 @@ font-size: 22px;
 .answer-text {
 font-size: 18px;
 }
+.voice-controls {
+top: 10px;
+right: -180px; /* Adjusted for mobile */
+}
+.voice-btn {
+font-size: 12px;
+padding: 6px 10px;
+}
 }
 </style>
 </head>
 <body>
-  <!-- Voice Controls -->
-  <div class="voice-controls">
-    <button class="voice-btn" onclick="repeatCurrentQuestion()">🔊 Repeat Question</button>
-    <button class="voice-btn" onclick="skipToNextQuestion()">⏭️ Skip Question</button>
-  </div>
-
   <!-- VIDEO STAGE - Plays first -->
   <div id="videoStage">
     <video id="classroomVideo" preload="auto" playsinline></video>
@@ -357,6 +361,12 @@ font-size: 18px;
     <div class="board-wrap">
       <div class="board-frame">
         <div class="board-inner" id="board">
+          <!-- Voice Controls - Positioned further to the RIGHT of the chalkboard -->
+          <div class="voice-controls">
+            <button class="voice-btn" onclick="repeatCurrentQuestion()">🔊 Repeat Question</button>
+            <button class="voice-btn" onclick="skipToNextQuestion()">⏭️ Skip Question</button>
+          </div>
+
           <div class="chalk-lines"></div>
 
           <div class="question" id="questionText"></div>
