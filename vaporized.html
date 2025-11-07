@@ -558,20 +558,25 @@
     console.log("🔊 Setting up Oculus audio activation...");
     
     const activateAudio = () => {
-      console.log("🎯 User interaction detected - activating audio system");
-      audioContextActivated = true;
-      
-      // Play intro music immediately
-      introMusic.play().then(() => {
-        console.log("✅ Intro music playing after user interaction");
-      }).catch(e => {
-        console.log("❌ Intro music failed:", e);
-      });
-      
-      // Remove listeners once activated
-      document.removeEventListener('click', activateAudio);
-      document.removeEventListener('touchstart', activateAudio);
-      document.removeEventListener('keydown', activateAudio);
+        console.log("🎯 User interaction detected - activating audio system");
+        audioContextActivated = true;
+        
+        // ONLY play intro music if we're still in the Star Wars intro
+        // Don't restart it if user is making choices
+        if (starwarsIntro.style.display !== 'none') {
+            introMusic.play().then(() => {
+                console.log("✅ Intro music playing after user interaction");
+            }).catch(e => {
+                console.log("❌ Intro music failed:", e);
+            });
+        } else {
+            console.log("✅ Audio context activated (not playing intro music - past intro phase)");
+        }
+        
+        // Remove listeners once activated
+        document.removeEventListener('click', activateAudio);
+        document.removeEventListener('touchstart', activateAudio);
+        document.removeEventListener('keydown', activateAudio);
     };
     
     // Listen for user interactions
@@ -581,16 +586,16 @@
     
     // Also try direct play for non-Oculus browsers
     setTimeout(() => {
-      if (!audioContextActivated) {
-        introMusic.play().then(() => {
-          console.log("✅ Intro music auto-playing (non-Oculus)");
-          audioContextActivated = true;
-        }).catch(e => {
-          console.log("🔇 Auto-play blocked (Oculus detected)");
-        });
-      }
+        if (!audioContextActivated) {
+            introMusic.play().then(() => {
+                console.log("✅ Intro music auto-playing (non-Oculus)");
+                audioContextActivated = true;
+            }).catch(e => {
+                console.log("🔇 Auto-play blocked (Oculus detected)");
+            });
+        }
     }, 1000);
-  }
+}
 
   function playCheeringCrowd() {
     if (cheeringAudioPlayed) return;
@@ -957,6 +962,7 @@
 </script>
 </body>
 </html>
+
 
 
 
