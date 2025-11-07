@@ -3,721 +3,666 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vaporized - 3D Track Challenge</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <title>Vaping Impact Timeline - Athletic Performance</title>
     <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --healthy: #2ecc71;
+            --vaping: #e67e22;
+            --background: #ecf0f1;
+            --week: #3498db;
+            --month: #e67e22;
+            --year: #c0392b;
+        }
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
         body {
-            font-family: 'Arial', sans-serif;
-            background: #000;
-            color: white;
-            overflow: hidden;
+            background-color: var(--background);
+            color: var(--primary);
+            overflow-x: hidden;
         }
         
-        #gameContainer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            background: #000;
-        }
-        
-        #ui {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 20px;
-            z-index: 100;
-            text-align: center;
-            pointer-events: none;
         }
         
-        #title {
+        header {
+            text-align: center;
+            padding: 30px 0;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 0 0 15px rgba(255, 100, 100, 0.8);
-            background: linear-gradient(45deg, #ff8a00, #e52e71);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
         }
         
-        #subtitle {
+        .subtitle {
             font-size: 1.2rem;
-            color: #ff5555;
-            margin-bottom: 20px;
+            opacity: 0.9;
         }
         
-        #instructions {
-            font-size: 1rem;
-            margin-bottom: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 10px;
-            display: inline-block;
-            max-width: 600px;
-        }
-        
-        .stats {
+        .timeline-controls {
             display: flex;
-            justify-content: space-around;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .time-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .week-btn {
+            background-color: var(--week);
+            color: white;
+        }
+        
+        .month-btn {
+            background-color: var(--month);
+            color: white;
+        }
+        
+        .year-btn {
+            background-color: var(--year);
+            color: white;
+        }
+        
+        .reset-btn {
+            background-color: var(--secondary);
+            color: white;
+        }
+        
+        .time-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        }
+        
+        .time-btn:active {
+            transform: translateY(1px);
+        }
+        
+        .time-btn.active {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.5);
+        }
+        
+        .visualization-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .lungs-section {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .performance-section {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--primary);
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 10px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .lungs-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* IMAGE-BASED LUNGS */
+        .lungs-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 320px;
+            transition: transform 1.5s ease;
+        }
+
+        .lungs-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: filter 1.5s ease, opacity 1.5s ease;
+        }
+
+        .lungs-damage-overlay {
+            position: absolute;
+            inset: 0;
+            /* Dark, dirty, patchy overlay to simulate tar & inflammation */
+            background:
+                radial-gradient(circle at 25% 30%, rgba(120, 0, 0, 0.7), transparent 60%),
+                radial-gradient(circle at 75% 35%, rgba(90, 40, 0, 0.8), transparent 65%),
+                radial-gradient(circle at 35% 80%, rgba(60, 30, 0, 0.8), transparent 60%),
+                radial-gradient(circle at 70% 75%, rgba(25, 25, 25, 0.8), transparent 65%);
+            mix-blend-mode: multiply;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1.5s ease;
+        }
+        
+        .lung-capacity {
+            text-align: center;
+            font-size: 1.2rem;
             margin-top: 20px;
         }
         
-        .stat-box {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 10px;
-            min-width: 150px;
+        .capacity-value {
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: var(--secondary);
         }
         
-        .health-bar {
-            width: 300px;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            margin: 10px auto;
+        .time-indicator {
+            text-align: center;
+            font-size: 1.3rem;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+        
+        .time-value {
+            color: var(--accent);
+        }
+        
+        .stats-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: all 0.5s ease;
+        }
+        
+        .stat-label {
+            font-weight: 600;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        .performance-bar {
+            height: 25px;
+            background: #e0e0e0;
+            border-radius: 50px;
+            margin-top: 10px;
             overflow: hidden;
         }
         
-        .health-fill {
+        .performance-fill {
             height: 100%;
+            background: linear-gradient(90deg, var(--healthy), var(--secondary));
+            border-radius: 50px;
             width: 100%;
-            background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000);
-            transition: width 0.3s;
+            transition: width 1.5s ease;
         }
         
-        .controls {
-            position: fixed;
+        .track-visualization {
+            height: 200px;
+            background: #2c3e50;
+            border-radius: 10px;
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .runner {
+            position: absolute;
             bottom: 20px;
-            left: 20px;
-            z-index: 100;
+            left: 50px;
+            width: 30px;
+            height: 50px;
+            background: var(--healthy);
+            border-radius: 50% 50% 0 0;
+            transition: left 3s linear;
         }
         
-        .control-button {
+        .finish-line {
+            position: absolute;
+            top: 0;
+            right: 50px;
+            width: 5px;
+            height: 100%;
+            background: repeating-linear-gradient(
+                to bottom,
+                white,
+                white 10px,
+                #e74c3c 10px,
+                #e74c3c 20px
+            );
+        }
+        
+        .info-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .info-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+        }
+        
+        .info-card h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .modal h2 {
+            color: var(--accent);
+            margin-bottom: 15px;
+        }
+        
+        .close-modal {
+            margin-top: 20px;
             padding: 10px 20px;
-            background: #2196F3;
+            background: var(--secondary);
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 1rem;
-            margin: 5px;
         }
         
-        .lap-counter {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-size: 1.2rem;
-            z-index: 100;
-        }
-        
-        .completion-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            z-index: 200;
-            text-align: center;
-        }
-        
-        .completion-title {
-            font-size: 3rem;
-            margin-bottom: 20px;
-            color: #ff5555;
-        }
-        
-        .completion-message {
-            font-size: 1.5rem;
-            margin-bottom: 30px;
-            max-width: 600px;
-            line-height: 1.5;
-        }
-        
-        .vaping-effect {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, rgba(100,100,100,0.3) 0%, rgba(0,0,0,0) 70%);
-            pointer-events: none;
-            z-index: 50;
-            opacity: 0;
-            transition: opacity 0.5s;
-        }
-        
-        .cough-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.3);
-            pointer-events: none;
-            z-index: 60;
-            opacity: 0;
-        }
-        
-        .effects-panel {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
+        .impact-details {
+            margin-top: 20px;
             padding: 15px;
-            border-radius: 10px;
-            z-index: 100;
-            max-width: 300px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-align: left;
         }
         
-        .effect {
-            padding: 8px;
-            margin: 5px 0;
-            background: rgba(255, 0, 0, 0.3);
-            border-radius: 5px;
-            display: none;
-            font-size: 0.9rem;
+        .impact-details h4 {
+            margin-bottom: 10px;
+            color: var(--primary);
         }
         
-        .visible {
-            display: block;
-        }
-        
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        #debug {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.8);
-            color: lime;
-            padding: 10px;
-            font-family: monospace;
-            z-index: 1000;
-            display: none;
+        @media (max-width: 768px) {
+            .visualization-container {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .time-btn {
+                padding: 12px 20px;
+                font-size: 1rem;
+            }
+            
+            .lungs-container {
+                height: 280px;
+            }
         }
     </style>
 </head>
 <body>
-    <div id="debug">Loading...</div>
-    <div id="gameContainer"></div>
-    
-    <div id="ui">
-        <h1 id="title">3D TRACK CHALLENGE</h1>
-        <h2 id="subtitle">Vaping vs. Healthy Lungs - First Person Perspective</h2>
-        <div id="instructions">
-            <p>Click and drag to run! The faster you move, the faster your character runs.</p>
-            <p>As a vaper, your lung capacity decreases - try to keep up with the healthy runner!</p>
-            <p class="pulse">You are seeing from the vaper's perspective on a 3D circular track</p>
+    <div class="container">
+        <header>
+            <h1>Vaping Impact Timeline</h1>
+            <p class="subtitle">See how vaping progressively damages lungs and impairs athletic performance over time</p>
+        </header>
+        
+        <div class="timeline-controls">
+            <button class="time-btn week-btn" id="weekBtn">
+                <span>1 Week</span>
+            </button>
+            <button class="time-btn month-btn" id="monthBtn">
+                <span>1 Month</span>
+            </button>
+            <button class="time-btn year-btn" id="yearBtn">
+                <span>1 Year</span>
+            </button>
+            <button class="time-btn reset-btn" id="resetBtn">
+                <span>Reset to Healthy</span>
+            </button>
         </div>
         
-        <div class="health-bar">
-            <div class="health-fill" id="healthBar"></div>
+        <div class="time-indicator">
+            Current Status: <span class="time-value" id="timeValue">Healthy (0 days)</span>
         </div>
         
-        <div class="stats">
-            <div class="stat-box">
-                <div>Your Speed: <span id="playerSpeed">0</span> mph</div>
+        <div class="visualization-container">
+            <div class="lungs-section">
+                <h2 class="section-title">Lung Health</h2>
+                <div class="lungs-container">
+                    <!-- Put lungs.png in the same folder as this HTML file -->
+                    <div class="lungs-wrapper" id="lungsWrapper">
+                        <img src="lungs.png" alt="Lungs" class="lungs-image" id="lungsImage">
+                        <div class="lungs-damage-overlay" id="lungsDamageOverlay"></div>
+                    </div>
+                </div>
+                <div class="lung-capacity">
+                    Lung Capacity: <span class="capacity-value">100%</span>
+                </div>
             </div>
-            <div class="stat-box">
-                <div>Opponent Speed: <span id="opponentSpeed">0</span> mph</div>
+            
+            <div class="performance-section">
+                <h2 class="section-title">Athletic Performance</h2>
+                <div class="stats-container">
+                    <div class="stat">
+                        <span class="stat-label">Endurance:</span>
+                        <span class="stat-value" id="enduranceValue">100%</span>
+                    </div>
+                    <div class="performance-bar">
+                        <div class="performance-fill" id="enduranceBar"></div>
+                    </div>
+                    
+                    <div class="stat">
+                        <span class="stat-label">Speed:</span>
+                        <span class="stat-value" id="speedValue">100%</span>
+                    </div>
+                    <div class="performance-bar">
+                        <div class="performance-fill" id="speedBar"></div>
+                    </div>
+                    
+                    <div class="stat">
+                        <span class="stat-label">Recovery Time:</span>
+                        <span class="stat-value" id="recoveryValue">100%</span>
+                    </div>
+                    <div class="performance-bar">
+                        <div class="performance-fill" id="recoveryBar"></div>
+                    </div>
+                </div>
+                
+                <div class="track-visualization">
+                    <div class="runner" id="runner"></div>
+                    <div class="finish-line"></div>
+                </div>
             </div>
-            <div class="stat-box">
-                <div>Lung Capacity: <span id="lungCapacity">100</span>%</div>
+        </div>
+        
+        <div class="info-section">
+            <h2 class="section-title">How Vaping Progressively Affects Athletic Performance</h2>
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>1 Week</h3>
+                    <p>Initial irritation and inflammation of airways begins. Oxygen absorption slightly reduced, causing early fatigue during exercise.</p>
+                </div>
+                <div class="info-card">
+                    <h3>1 Month</h3>
+                    <p>Significant lung capacity reduction. Cilia damage allows toxins to accumulate. Performance drops noticeably with shortness of breath.</p>
+                </div>
+                <div class="info-card">
+                    <h3>1 Year</h3>
+                    <p>Chronic bronchitis symptoms may appear. Permanent lung tissue damage occurs. Athletic performance severely compromised.</p>
+                </div>
+            </div>
+            
+            <div class="impact-details">
+                <h4>Scientific Background</h4>
+                <p>Studies show that vaping for just 30 days can reduce lung function by up to 40% in some individuals. The nicotine and other chemicals in vapes cause inflammation, reduce cilia function (the hair-like structures that clear lungs), and damage alveoli where oxygen exchange happens.</p>
+                <p>Athletes who vape experience decreased VO2 max (maximum oxygen consumption), reduced endurance, slower recovery times, and increased risk of respiratory illnesses.</p>
             </div>
         </div>
     </div>
     
-    <div class="lap-counter">Lap: <span id="lapNumber">1</span>/3</div>
-    
-    <div class="controls">
-        <button class="control-button" id="viewToggle">TOGGLE VIEW</button>
-        <button class="control-button" id="helpButton">HELP</button>
-    </div>
-    
-    <div class="effects-panel">
-        <div class="effect" id="effectShortness">Shortness of Breath - Speed Reduced</div>
-        <div class="effect" id="effectCoughing">Coughing Fit - Momentum Lost</div>
-        <div class="effect" id="effectFatigue">Fatigue - Can't Maintain Pace</div>
-    </div>
-    
-    <div class="vaping-effect" id="vapingEffect"></div>
-    <div class="cough-overlay" id="coughOverlay"></div>
-    
-    <div class="completion-screen" id="completionScreen">
-        <h1 class="completion-title">RACE COMPLETE</h1>
-        <p class="completion-message">Despite your best efforts, the effects of vaping significantly reduced your lung capacity and athletic performance. A healthy respiratory system is essential for peak physical performance.</p>
-        <button class="control-button" id="restartButton">TRY AGAIN</button>
+    <div class="modal" id="impactModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Significant Performance Drop Detected</h2>
+            <p id="modalMessage">After just 30 days of vaping, lung capacity has decreased by 40%, directly impacting your athletic performance.</p>
+            <div class="impact-details">
+                <h4>What's happening in your body:</h4>
+                <p id="modalDetails">The nicotine and chemicals in vapes are causing inflammation and damage to your lung tissue, reducing their ability to transfer oxygen to your bloodstream.</p>
+            </div>
+            <button class="close-modal" id="closeModal">Continue</button>
+        </div>
     </div>
 
     <script>
-        // Debug logging
-        const debug = document.getElementById('debug');
-        debug.style.display = 'block';
-        
-        function log(message) {
-            debug.textContent = message;
-            console.log(message);
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            // Buttons
+            const weekBtn = document.getElementById('weekBtn');
+            const monthBtn = document.getElementById('monthBtn');
+            const yearBtn = document.getElementById('yearBtn');
+            const resetBtn = document.getElementById('resetBtn');
 
-        // Game state
-        const gameState = {
-            playerSpeed: 0,
-            opponentSpeed: 8,
-            lungCapacity: 100,
-            raceStarted: false,
-            raceFinished: false,
-            playerAngle: 0,
-            opponentAngle: 0,
-            currentLap: 1,
-            totalLaps: 3,
-            isFirstPersonView: true,
-            coughTimer: 0,
-            mouseDown: false,
-            lastMouseX: 0
-        };
+            // Lungs visuals
+            const lungsWrapper = document.getElementById('lungsWrapper');
+            const lungsImage = document.getElementById('lungsImage');
+            const damageOverlay = document.getElementById('lungsDamageOverlay');
 
-        // Three.js variables
-        let scene, camera, renderer;
-        let player, opponent;
-        const trackRadius = 40;
+            // Text / stats
+            const capacityValue = document.querySelector('.capacity-value');
+            const timeValue = document.getElementById('timeValue');
+            const enduranceValue = document.getElementById('enduranceValue');
+            const speedValue = document.getElementById('speedValue');
+            const recoveryValue = document.getElementById('recoveryValue');
+            const enduranceBar = document.getElementById('enduranceBar');
+            const speedBar = document.getElementById('speedBar');
+            const recoveryBar = document.getElementById('recoveryBar');
+            const runner = document.getElementById('runner');
 
-        // Initialize the game
-        function init() {
-            log("Initializing 3D game...");
+            // Modal
+            const impactModal = document.getElementById('impactModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalDetails = document.getElementById('modalDetails');
+            const closeModal = document.getElementById('closeModal');
             
-            try {
-                // Create scene with guaranteed background
-                scene = new THREE.Scene();
-                scene.background = new THREE.Color(0x87CEEB); // Sky blue
-                log("Scene created");
-                
-                // Create camera
-                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-                setFirstPersonCamera();
-                log("Camera created");
-                
-                // Create renderer with fallback options
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                
-                if (!context) {
-                    throw new Error('WebGL not supported');
+            // Time-based impact data
+            const timeImpacts = {
+                healthy: { 
+                    days: 0, 
+                    lungCapacity: 100, 
+                    message: "Healthy (0 days)", 
+                    scale: 1,
+                    lungFilter: "none",
+                    damageOpacity: 0
+                },
+                week: { 
+                    days: 7, 
+                    lungCapacity: 85, 
+                    message: "1 week of vaping", 
+                    scale: 0.95,
+                    // Slightly dull and darker, very early damage
+                    lungFilter: "saturate(0.95) contrast(0.97) brightness(0.97)",
+                    damageOpacity: 0.3
+                },
+                month: { 
+                    days: 30, 
+                    lungCapacity: 60, 
+                    message: "1 month of vaping", 
+                    scale: 0.8,
+                    // Noticeably dirtier: less color, brownish cast, dimmer
+                    lungFilter: "sepia(0.3) saturate(0.8) contrast(0.9) brightness(0.9)",
+                    damageOpacity: 0.7
+                },
+                year: { 
+                    days: 365, 
+                    lungCapacity: 40, 
+                    message: "1 year of vaping", 
+                    scale: 0.65,
+                    // Very damaged: gray, dirty, low contrast and dark
+                    lungFilter: "grayscale(0.6) sepia(0.5) saturate(0.6) contrast(0.85) brightness(0.82)",
+                    damageOpacity: 0.95
                 }
-                
-                renderer = new THREE.WebGLRenderer({ 
-                    antialias: true,
-                    alpha: false,
-                    powerPreference: "high-performance"
-                });
-                
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.setPixelRatio(window.devicePixelRatio);
-                renderer.setClearColor(0x87CEEB, 1); // Ensure background color
-                
-                // Add renderer to DOM
-                const container = document.getElementById('gameContainer');
-                container.innerHTML = ''; // Clear any existing content
-                container.appendChild(renderer.domElement);
-                log("Renderer created and added to DOM");
-                
-                // Add basic lighting - using simpler materials for reliability
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-                scene.add(ambientLight);
-                log("Lighting added");
-                
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-                directionalLight.position.set(50, 50, 25);
-                scene.add(directionalLight);
-                
-                // Create simple but visible game objects
-                createSimpleTrack();
-                createSimpleEnvironment();
-                createSimpleRunners();
-                log("Game objects created");
-                
-                // Set up event listeners
-                setupEventListeners();
-                log("Event listeners set up");
-                
-                // Start game loop
-                animate();
-                log("Game loop started");
-                
-                // Start race after intro
-                setTimeout(() => {
-                    gameState.raceStarted = true;
-                    document.getElementById('instructions').innerHTML = 
-                        '<p class="pulse">RACE STARTED! Click and drag to run!</p>';
-                    log("Race started");
-                }, 3000);
-                
-                log("3D game initialized successfully!");
-                
-            } catch (error) {
-                log("Error: " + error.message);
-                // Fallback to 2D
-                init2DFallback();
-            }
-        }
-
-        function createSimpleTrack() {
-            // Simple track with bright colors for visibility
-            const trackGeometry = new THREE.RingGeometry(trackRadius - 5, trackRadius + 5, 32);
-            const trackMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0x333333 // Dark gray for contrast
-            });
-            const track = new THREE.Mesh(trackGeometry, trackMaterial);
-            track.rotation.x = -Math.PI / 2;
-            scene.add(track);
+            };
             
-            // Bright lane markings for visibility
-            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-            for (let i = 0; i < 8; i++) {
-                const angle = (i / 8) * Math.PI * 2;
-                const points = [
-                    new THREE.Vector3(
-                        Math.sin(angle) * (trackRadius - 4.5),
-                        0.1,
-                        Math.cos(angle) * (trackRadius - 4.5)
-                    ),
-                    new THREE.Vector3(
-                        Math.sin(angle) * (trackRadius + 4.5),
-                        0.1,
-                        Math.cos(angle) * (trackRadius + 4.5)
-                    )
-                ];
-                const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-                const line = new THREE.Line(lineGeometry, lineMaterial);
-                scene.add(line);
-            }
+            // Initial state
+            let currentState = 'healthy';
             
-            // Bright yellow finish line
-            const finishLineGeometry = new THREE.BoxGeometry(2, 1, 10);
-            const finishLineMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-            const finishLine = new THREE.Mesh(finishLineGeometry, finishLineMaterial);
-            finishLine.position.set(0, 0.5, trackRadius);
-            scene.add(finishLine);
-        }
-
-        function createSimpleEnvironment() {
-            // Bright green ground for visibility
-            const groundGeometry = new THREE.PlaneGeometry(200, 200);
-            const groundMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0x2E8B57 // Bright green
-            });
-            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.1;
-            scene.add(ground);
-            
-            // Simple stadium with visible colors
-            for (let i = 0; i < 12; i++) {
-                const angle = (i / 12) * Math.PI * 2;
-                const standGeometry = new THREE.BoxGeometry(20, 10, 8);
-                const standMaterial = new THREE.MeshBasicMaterial({ color: 0x666666 });
-                const stand = new THREE.Mesh(standGeometry, standMaterial);
+            function updateVisualization() {
+                const impact = timeImpacts[currentState];
                 
-                stand.position.set(
-                    Math.sin(angle) * (trackRadius + 15),
-                    5,
-                    Math.cos(angle) * (trackRadius + 15)
-                );
-                stand.rotation.y = -angle;
-                scene.add(stand);
+                // Lungs appearance
+                lungsWrapper.style.transform = `scale(${impact.scale})`;
+                lungsImage.style.filter = impact.lungFilter;
+                damageOverlay.style.opacity = impact.damageOpacity;
                 
-                // Simple crowd with random colors
-                for (let j = -4; j <= 4; j += 2) {
-                    const personGeometry = new THREE.BoxGeometry(0.5, 1.5, 0.3);
-                    const personMaterial = new THREE.MeshBasicMaterial({ 
-                        color: new THREE.Color(Math.random(), Math.random(), Math.random())
-                    });
-                    const person = new THREE.Mesh(personGeometry, personMaterial);
-                    
-                    person.position.set(
-                        Math.sin(angle) * (trackRadius + 16),
-                        6,
-                        Math.cos(angle) * (trackRadius + 16) + j
-                    );
-                    person.rotation.y = -angle;
-                    scene.add(person);
+                // Capacity display
+                capacityValue.textContent = `${impact.lungCapacity}%`;
+                
+                // Time indicator
+                timeValue.textContent = impact.message;
+                timeValue.style.color = impact.lungCapacity >= 70 ? "var(--healthy)" : 
+                                      impact.lungCapacity >= 40 ? "var(--vaping)" : "var(--accent)";
+                
+                // Performance stats
+                const endurance = impact.lungCapacity;
+                const speed = Math.max(40, impact.lungCapacity - 10);
+                const recovery = Math.max(30, impact.lungCapacity - 20);
+                
+                enduranceValue.textContent = `${endurance}%`;
+                speedValue.textContent = `${speed}%`;
+                recoveryValue.textContent = `${recovery}%`;
+                
+                // Bars
+                enduranceBar.style.width = `${endurance}%`;
+                speedBar.style.width = `${speed}%`;
+                recoveryBar.style.width = `${recovery}%`;
+                
+                // Runner position & color
+                const trackWidth = document.querySelector('.track-visualization').offsetWidth - 100;
+                const runnerPosition = (speed / 100) * trackWidth;
+                runner.style.left = `${50 + runnerPosition}px`;
+                runner.style.background = impact.lungCapacity >= 70 ? "var(--healthy)" : 
+                                        impact.lungCapacity >= 40 ? "var(--vaping)" : "var(--accent)";
+                
+                // Modal for bigger impacts
+                if (currentState === 'month') {
+                    modalTitle.textContent = "One Month of Vaping - Significant Impact";
+                    modalMessage.textContent = "After 30 days of vaping, your lung capacity has decreased by 40%, directly impacting your athletic performance.";
+                    modalDetails.textContent = "The nicotine and chemicals in vapes are causing inflammation and damage to your lung tissue, reducing their ability to transfer oxygen to your bloodstream. Cilia function is impaired, allowing toxins to accumulate.";
+                    impactModal.style.display = 'flex';
+                } else if (currentState === 'year') {
+                    modalTitle.textContent = "One Year of Vaping - Severe Damage";
+                    modalMessage.textContent = "After a year of vaping, your lung capacity has decreased by 60%, with potentially permanent damage to lung tissue.";
+                    modalDetails.textContent = "Chronic inflammation has led to bronchitis-like symptoms. Alveoli damage is significant and may be irreversible. Your athletic performance is severely compromised with greatly reduced endurance and slower recovery times.";
+                    impactModal.style.display = 'flex';
                 }
             }
             
-            // Simple trees
-            for (let i = 0; i < 16; i++) {
-                const angle = (i / 16) * Math.PI * 2;
-                const distance = trackRadius + 25;
-                
-                // Tree trunk
-                const trunkGeometry = new THREE.CylinderGeometry(0.4, 0.6, 4, 8);
-                const trunkMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513 });
-                const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-                trunk.position.set(
-                    Math.sin(angle) * distance,
-                    2,
-                    Math.cos(angle) * distance
-                );
-                scene.add(trunk);
-                
-                // Tree top
-                const treeTopGeometry = new THREE.ConeGeometry(2, 5, 8);
-                const treeTopMaterial = new THREE.MeshBasicMaterial({ color: 0x228B22 });
-                const treeTop = new THREE.Mesh(treeTopGeometry, treeTopMaterial);
-                treeTop.position.set(
-                    Math.sin(angle) * distance,
-                    4.5,
-                    Math.cos(angle) * distance
-                );
-                scene.add(treeTop);
-            }
-        }
-
-        function createSimpleRunners() {
-            // Create player (vaper) - bright red
-            const playerGeometry = new THREE.SphereGeometry(0.8, 16, 16);
-            const playerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-            player = new THREE.Mesh(playerGeometry, playerMaterial);
-            player.position.set(0, 1, trackRadius - 2);
-            scene.add(player);
-            
-            // Create opponent (healthy) - bright blue
-            const opponentGeometry = new THREE.SphereGeometry(0.8, 16, 16);
-            const opponentMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-            opponent = new THREE.Mesh(opponentGeometry, opponentMaterial);
-            opponent.position.set(0, 1, trackRadius + 2);
-            scene.add(opponent);
-        }
-
-        function setFirstPersonCamera() {
-            camera.position.set(0, 1.6, 0);
-            camera.rotation.set(0, 0, 0);
-        }
-
-        function setThirdPersonCamera() {
-            camera.position.set(0, 15, 25);
-            camera.lookAt(0, 0, 0);
-        }
-
-        function toggleCameraView() {
-            gameState.isFirstPersonView = !gameState.isFirstPersonView;
-            if (gameState.isFirstPersonView) {
-                setFirstPersonCamera();
-                document.getElementById('viewToggle').textContent = "THIRD PERSON VIEW";
-            } else {
-                setThirdPersonCamera();
-                document.getElementById('viewToggle').textContent = "FIRST PERSON VIEW";
-            }
-        }
-
-        function updateCamera() {
-            if (gameState.isFirstPersonView) {
-                camera.position.x = player.position.x;
-                camera.position.z = player.position.z;
-                camera.rotation.y = gameState.playerAngle + Math.PI;
-            }
-        }
-
-        function setupEventListeners() {
-            // Mouse controls
-            document.addEventListener('mousedown', (e) => {
-                gameState.mouseDown = true;
-                gameState.lastMouseX = e.clientX;
-            });
-            
-            document.addEventListener('mouseup', () => {
-                gameState.mouseDown = false;
-            });
-            
-            document.addEventListener('mousemove', (e) => {
-                if (gameState.mouseDown && gameState.raceStarted && !gameState.raceFinished && gameState.lungCapacity > 0) {
-                    const deltaX = e.clientX - gameState.lastMouseX;
-                    gameState.playerSpeed = Math.min(15, gameState.playerSpeed + Math.abs(deltaX) * 0.1);
-                    gameState.lastMouseX = e.clientX;
-                }
-            });
-            
-            // Touch support
-            document.addEventListener('touchstart', (e) => {
-                gameState.mouseDown = true;
-                gameState.lastMouseX = e.touches[0].clientX;
-            });
-            
-            document.addEventListener('touchend', () => {
-                gameState.mouseDown = false;
-            });
-            
-            document.addEventListener('touchmove', (e) => {
-                if (gameState.mouseDown && gameState.raceStarted && !gameState.raceFinished && gameState.lungCapacity > 0) {
-                    const deltaX = e.touches[0].clientX - gameState.lastMouseX;
-                    gameState.playerSpeed = Math.min(15, gameState.playerSpeed + Math.abs(deltaX) * 0.05);
-                    gameState.lastMouseX = e.touches[0].clientX;
-                }
-            });
-            
-            // Button events
-            document.getElementById('viewToggle').addEventListener('click', toggleCameraView);
-            document.getElementById('helpButton').addEventListener('click', showHelp);
-            document.getElementById('restartButton').addEventListener('click', resetRace);
-            
-            // Window resize
-            window.addEventListener('resize', onWindowResize);
-        }
-
-        function showHelp() {
-            alert("HOW TO PLAY:\n\n- Click and drag horizontally to run faster\n- The faster you drag, the faster you run\n- As a vaper, your lung capacity decreases as you run\n- Try to complete 3 laps while managing your lung capacity");
-        }
-
-        function resetRace() {
-            gameState.playerSpeed = 0;
-            gameState.opponentSpeed = 8;
-            gameState.lungCapacity = 100;
-            gameState.raceStarted = false;
-            gameState.raceFinished = false;
-            gameState.playerAngle = 0;
-            gameState.opponentAngle = 0;
-            gameState.currentLap = 1;
-            
-            player.position.set(0, 1, trackRadius - 2);
-            opponent.position.set(0, 1, trackRadius + 2);
-            
-            document.getElementById('completionScreen').style.display = 'none';
-            document.getElementById('healthBar').style.width = '100%';
-            document.getElementById('lungCapacity').textContent = '100';
-            document.getElementById('lapNumber').textContent = '1';
-            document.getElementById('vapingEffect').style.opacity = 0;
-            document.getElementById('coughOverlay').style.opacity = 0;
-            
-            // Reset effects
-            document.getElementById('effectShortness').classList.remove('visible');
-            document.getElementById('effectCoughing').classList.remove('visible');
-            document.getElementById('effectFatigue').classList.remove('visible');
-            
-            setTimeout(() => {
-                gameState.raceStarted = true;
-                document.getElementById('instructions').innerHTML = 
-                    '<p class="pulse">RACE STARTED! Click and drag to run!</p>';
-            }, 3000);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            if (gameState.raceStarted && !gameState.raceFinished) {
-                // Update player position
-                gameState.playerAngle += gameState.playerSpeed * 0.003;
-                player.position.x = Math.sin(gameState.playerAngle) * (trackRadius - 2);
-                player.position.z = Math.cos(gameState.playerAngle) * (trackRadius - 2);
-                
-                // Update opponent position
-                gameState.opponentAngle += gameState.opponentSpeed * 0.003;
-                opponent.position.x = Math.sin(gameState.opponentAngle) * (trackRadius + 2);
-                opponent.position.z = Math.cos(gameState.opponentAngle) * (trackRadius + 2);
-                
-                // Update camera
-                updateCamera();
-                
-                // Apply vaping effects
-                if (gameState.playerSpeed > 0) {
-                    gameState.lungCapacity = Math.max(0, gameState.lungCapacity - gameState.playerSpeed * 0.03);
-                    document.getElementById('lungCapacity').textContent = Math.round(gameState.lungCapacity);
-                    document.getElementById('healthBar').style.width = gameState.lungCapacity + '%';
-                    
-                    // Visual effects
-                    const vapingEffect = document.getElementById('vapingEffect');
-                    if (gameState.lungCapacity < 70) {
-                        vapingEffect.style.opacity = (100 - gameState.lungCapacity) / 100 * 0.6;
-                        document.getElementById('effectShortness').classList.add('visible');
-                    }
-                    
-                    // Coughing
-                    if (gameState.lungCapacity < 40) {
-                        gameState.coughTimer++;
-                        if (gameState.coughTimer > 90) {
-                            document.getElementById('coughOverlay').style.opacity = 0.7;
-                            document.getElementById('effectCoughing').classList.add('visible');
-                            setTimeout(() => {
-                                document.getElementById('coughOverlay').style.opacity = 0;
-                            }, 300);
-                            gameState.coughTimer = 0;
-                            gameState.playerSpeed = Math.max(0, gameState.playerSpeed - 3);
-                        }
-                    }
-                    
-                    // Fatigue
-                    if (gameState.lungCapacity < 20) {
-                        document.getElementById('effectFatigue').classList.add('visible');
-                        gameState.playerSpeed = Math.max(0, gameState.playerSpeed - 0.08);
-                    }
-                    
-                    // Natural speed decay
-                    gameState.playerSpeed = Math.max(0, gameState.playerSpeed - 0.03);
-                }
-                
-                // Update UI
-                document.getElementById('playerSpeed').textContent = Math.round(gameState.playerSpeed);
-                document.getElementById('opponentSpeed').textContent = Math.round(gameState.opponentSpeed);
-                
-                // Check lap completion
-                const playerLapProgress = (gameState.playerAngle / (Math.PI * 2)) % 1;
-                if (playerLapProgress < 0.01 && gameState.playerAngle > Math.PI * 2) {
-                    gameState.currentLap++;
-                    document.getElementById('lapNumber').textContent = gameState.currentLap;
-                    
-                    if (gameState.currentLap > gameState.totalLaps) {
-                        gameState.raceFinished = true;
-                        document.getElementById('completionScreen').style.display = 'flex';
-                    }
-                }
+            function setActiveButton(activeBtn) {
+                weekBtn.classList.remove('active');
+                monthBtn.classList.remove('active');
+                yearBtn.classList.remove('active');
+                resetBtn.classList.remove('active');
+                activeBtn.classList.add('active');
             }
             
-            // Render scene
-            renderer.render(scene, camera);
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        // 2D fallback if 3D fails
-        function init2DFallback() {
-            log("Using 2D fallback");
-            document.getElementById('instructions').innerHTML = 
-                '<p>3D mode unavailable. Using 2D simulation.</p>' +
-                '<p>Click and drag to run! Experience how vaping affects performance.</p>';
+            weekBtn.addEventListener('click', function() {
+                currentState = 'week';
+                setActiveButton(weekBtn);
+                updateVisualization();
+            });
             
-            // Simple 2D animation would go here
-        }
-
-        // Start the game when page loads
-        window.addEventListener('load', init);
+            monthBtn.addEventListener('click', function() {
+                currentState = 'month';
+                setActiveButton(monthBtn);
+                updateVisualization();
+            });
+            
+            yearBtn.addEventListener('click', function() {
+                currentState = 'year';
+                setActiveButton(yearBtn);
+                updateVisualization();
+            });
+            
+            resetBtn.addEventListener('click', function() {
+                currentState = 'healthy';
+                setActiveButton(resetBtn);
+                updateVisualization();
+            });
+            
+            closeModal.addEventListener('click', function() {
+                impactModal.style.display = 'none';
+            });
+            
+            // Initialize
+            updateVisualization();
+            setActiveButton(resetBtn);
+        });
     </script>
 </body>
 </html>
