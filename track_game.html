@@ -365,6 +365,113 @@
             margin-bottom: 10px;
             color: var(--primary);
         }
+
+        /* ENDING STYLES */
+        #endingStage {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #endingVideo {
+            width: 100%;
+            height: 100vh;
+            object-fit: contain;
+        }
+
+        #breakTheVapeScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+
+        #breakTheVapeText {
+            font-size: 6rem;
+            font-weight: bold;
+            color: #e74c3c;
+            text-align: center;
+            text-shadow: 0 0 30px rgba(231, 76, 60, 0.7);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        #skipEnding {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background: #23c2ff;
+            color: #001;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 4000;
+            display: none;
+        }
+
+        #skipEnding:hover {
+            background: #1ea5e0;
+        }
+
+        /* Audio Controls */
+        #audioControls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        #muteButton {
+            background: rgba(255,255,255,0.9);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* Transition Screen */
+        #transitionScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2500;
+            color: white;
+            font-size: 2rem;
+        }
         
         @media (max-width: 768px) {
             .visualization-container {
@@ -383,10 +490,24 @@
             .lungs-container {
                 height: 280px;
             }
+
+            #breakTheVapeText {
+                font-size: 3rem;
+            }
+
+            #transitionScreen {
+                font-size: 1.5rem;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Audio Controls -->
+    <div id="audioControls">
+        <button id="muteButton">🔊</button>
+    </div>
+
+    <!-- Main Content -->
     <div class="container">
         <header>
             <h1>Vaping Impact Timeline</h1>
@@ -485,8 +606,14 @@
                 <p>Athletes who vape experience decreased VO2 max (maximum oxygen consumption), reduced endurance, slower recovery times, and increased risk of respiratory illnesses.</p>
             </div>
         </div>
+
+        <!-- Hidden audio for ending -->
+        <audio id="endingAudio" preload="auto">
+            <source src="assets/audio/ending.mp3" type="audio/mpeg">
+        </audio>
     </div>
     
+    <!-- Modal -->
     <div class="modal" id="impactModal">
         <div class="modal-content">
             <h2 id="modalTitle">Significant Performance Drop Detected</h2>
@@ -497,6 +624,23 @@
             </div>
             <button class="close-modal" id="closeModal">Continue</button>
         </div>
+    </div>
+
+    <!-- Transition Screen -->
+    <div id="transitionScreen">
+        <div>Preparing final message...</div>
+    </div>
+
+    <!-- Ending Stages -->
+    <div id="endingStage">
+        <video id="endingVideo" preload="auto" playsinline>
+            <source src="assets/video/Ending.mp4" type="video/mp4">
+        </video>
+        <button id="skipEnding">Skip</button>
+    </div>
+
+    <div id="breakTheVapeScreen">
+        <h1 id="breakTheVapeText">#BreakTheVape</h1>
     </div>
 
     <script>
@@ -529,6 +673,20 @@
             const modalMessage = document.getElementById('modalMessage');
             const modalDetails = document.getElementById('modalDetails');
             const closeModal = document.getElementById('closeModal');
+
+            // Ending elements
+            const endingAudio = document.getElementById('endingAudio');
+            const endingStage = document.getElementById('endingStage');
+            const endingVideo = document.getElementById('endingVideo');
+            const skipEnding = document.getElementById('skipEnding');
+            const breakTheVapeScreen = document.getElementById('breakTheVapeScreen');
+            const breakTheVapeText = document.getElementById('breakTheVapeText');
+            const muteButton = document.getElementById('muteButton');
+            const transitionScreen = document.getElementById('transitionScreen');
+            
+            // Timer variables
+            let videoTimer;
+            let audioStarted = false;
             
             // Time-based impact data
             const timeImpacts = {
@@ -568,6 +726,100 @@
                     damageOpacity: 0.95
                 }
             };
+
+            // Initialize audio immediately and set 36-second timer
+            function initializeAudio() {
+                console.log('🎵 Initializing ending audio...');
+                endingAudio.volume = 0.7;
+                
+                // Remove loop attribute to ensure it plays only once
+                endingAudio.loop = false;
+                
+                // Set 36-second timer for video (32s audio + 4s buffer)
+                console.log('⏰ Setting 36-second timer for MP4 playback');
+                videoTimer = setTimeout(function() {
+                    console.log('🕒 36 seconds elapsed - starting MP4');
+                    startVideoTransition();
+                }, 36000); // 36 seconds
+
+                // Try to play audio immediately
+                const playAudio = () => {
+                    if (!audioStarted) {
+                        endingAudio.play().then(() => {
+                            console.log('✅ Ending audio started successfully - WILL PLAY ONCE');
+                            console.log('⏰ MP4 will play in 36 seconds');
+                            audioStarted = true;
+                        }).catch(error => {
+                            console.log('❌ Audio autoplay blocked:', error);
+                            // Audio will play when user interacts with the page
+                        });
+                    }
+                };
+
+                // Try to play immediately
+                playAudio();
+
+                // Also try after a short delay in case of loading issues
+                setTimeout(playAudio, 1000);
+            }
+
+            // Mute button functionality
+            let isMuted = false;
+            muteButton.addEventListener('click', function() {
+                isMuted = !isMuted;
+                endingAudio.muted = isMuted;
+                muteButton.textContent = isMuted ? '🔇' : '🔊';
+            });
+
+            // Start video transition with 3-second delay
+            function startVideoTransition() {
+                console.log('⏳ Starting 3-second transition before video...');
+                
+                // Clear the timer in case it's still running
+                clearTimeout(videoTimer);
+                
+                // Show transition screen
+                transitionScreen.style.display = 'flex';
+                
+                // Wait 3 seconds, then start video
+                setTimeout(function() {
+                    console.log('🎬 Transition complete, starting video...');
+                    transitionScreen.style.display = 'none';
+                    startEndingVideo();
+                }, 3000);
+            }
+
+            // Start the ending video
+            function startEndingVideo() {
+                console.log('🎬 Starting ending video...');
+                
+                // Hide main content
+                document.querySelector('.container').style.display = 'none';
+                
+                // Show ending stage and play video
+                endingStage.style.display = 'flex';
+                skipEnding.style.display = 'block';
+                
+                // Play ending video
+                endingVideo.play().catch(e => console.log('Video play prevented:', e));
+                
+                // When video ends, show final message
+                endingVideo.addEventListener('ended', function() {
+                    showBreakTheVape();
+                });
+                
+                // Skip button functionality
+                skipEnding.addEventListener('click', function() {
+                    showBreakTheVape();
+                });
+                
+                // Keyboard skip
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') {
+                        showBreakTheVape();
+                    }
+                });
+            }
             
             // Initial state
             let currentState = 'healthy';
@@ -620,7 +872,46 @@
                     modalMessage.textContent = "After a year of vaping, your lung capacity has decreased by 60%, with potentially permanent damage to lung tissue.";
                     modalDetails.textContent = "Chronic inflammation has led to bronchitis-like symptoms. Alveoli damage is significant and may be irreversible. Your athletic performance is severely compromised with greatly reduced endurance and slower recovery times.";
                     impactModal.style.display = 'flex';
+                    
+                    // If user selects "1 Year" manually, start transition immediately
+                    startVideoTransition();
                 }
+            }
+
+            function showBreakTheVape() {
+                console.log('🔄 Showing Break The Vape screen');
+                
+                // Hide ending stage
+                endingStage.style.display = 'none';
+                skipEnding.style.display = 'none';
+                
+                // Stop video
+                endingVideo.pause();
+                
+                // Show final message
+                breakTheVapeScreen.style.display = 'flex';
+                
+                // Optional: Add a restart button after delay
+                setTimeout(() => {
+                    const restartBtn = document.createElement('button');
+                    restartBtn.textContent = 'Start Over';
+                    restartBtn.style.cssText = `
+                        position: fixed;
+                        bottom: 30px;
+                        background: #3498db;
+                        color: white;
+                        border: none;
+                        padding: 15px 30px;
+                        border-radius: 25px;
+                        font-size: 1.1em;
+                        cursor: pointer;
+                        z-index: 5000;
+                    `;
+                    restartBtn.onclick = () => {
+                        location.reload();
+                    };
+                    document.body.appendChild(restartBtn);
+                }, 5000);
             }
             
             function setActiveButton(activeBtn) {
@@ -659,9 +950,19 @@
                 impactModal.style.display = 'none';
             });
             
-            // Initialize
+            // Initialize everything
+            initializeAudio(); // Start audio immediately and set 36-second timer
             updateVisualization();
             setActiveButton(resetBtn);
+
+            // Add click event to entire document to help with audio autoplay
+            document.addEventListener('click', function() {
+                if (endingAudio.paused && !audioStarted) {
+                    endingAudio.play().then(() => {
+                        audioStarted = true;
+                    }).catch(e => console.log('Audio play on click failed:', e));
+                }
+            });
         });
     </script>
 </body>
