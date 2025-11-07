@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mouth – Inside View Oculus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1, maximum-scale=1"/>
+  
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  
+  <style>
+    html, body { 
+      margin:0; 
+      height:100%; 
+      background:#000; 
+      overflow: hidden; 
+    }
+    
+    #err{ 
+      position:fixed; 
+      left:0; 
+      right:0; 
+      bottom:0; 
+      color:#fff; 
+      background:rgba(200,0,0,.28);
+      font:12px/1.5 monospace; 
+      padding:6px 8px; 
+      display:none; 
+      white-space:pre-wrap; 
+      z-index:4; 
+    }
+    
+    .callout { 
+      position: fixed; 
+      left: 50%; 
+      top: 50%; 
+      transform: translate(-50%, -50%);
+      width: min(540px, 90vw); 
+      max-height: 72vh; 
+      overflow: auto; 
+      background: #fff; 
+      color: #111;
+      border: 2px solid #000; 
+      border-radius: 10px; 
+      box-shadow: 0 8px 28px rgba(0,0,0,.5);
+      font: 15px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; 
+      padding: 14px 16px; 
+      display: none; 
+      z-index: 5; 
+    }
+    
+    #placement-mode-indicator {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      color: #0f0;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 14px;
+      display: none;
+      z-index: 10;
+    }
+    
+    #placement-controls {
+      position: fixed;
+      top: 50px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      display: none;
+      z-index: 10;
+      line-height: 1.4;
+    }
+    
+    .a-enter-vr-button {
+      background: #00a2ff !important;
+      border-radius: 8px !important;
+    }
+  </style>
+</head>
+<body>
+<a-scene background="color:#000000" renderer="antialias:true; colorManagement:true; physicallyCorrectLights:true;"
+         xr-mode-ui="enabled:true" vr-mode-ui="enterVRButton:true" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
+
+  <a-assets timeout="30000">
+    <audio id="mouthNarration" src="../assets/audio/mouth_narration.mp3" preload="auto" crossorigin="anonymous"></audio>
+  </a-assets>
+
+  <!-- Lighting optimized for inside-mouth view -->
+  <a-entity light="type: ambient; intensity:0.7; color:#ffffff"></a-entity>
+  <a-entity light="type: directional; intensity:0.9; color:#ffffff" position="0 1 1"></a-entity>
+  <a-entity light="type: point; intensity:0.5; color:#ff8888; distance:3" position="0 0.5 0.5"></a-entity>
+
+  <!-- RIG: Positioned INSIDE the mouth on the tongue -->
+  <a-entity id="rig" position="0 0.05 -0.1">
+    <a-entity id="cam" camera="near:0.001; far:100; fov:85" active="true"
+              look-controls="pointerLockEnabled:false; touchEnabled:true; mouseEnabled:true"
+              wasd-controls="enabled: false"
+              position="0 0 0">
+    </a-entity>
+  </a-entity>
+
+  <!-- Mouth model -->
+  <a-entity id="mouthModel"></a-entity>
+
+  <!-- Droplets - confined inside mouth -->
+  <a-entity id="aeroEmitter"></a-entity>
+
+  <!-- Hotspots positioned inside mouth -->
+  <a-entity id="hs-teeth"></a-entity>
+  <a-entity id="hs-tongue"></a-entity>
+  <a-entity id="hs-cheek"></a-entity>
+
+  <!-- Narration -->
+  <a-entity id="narration" sound="src: #mouthNarration; autoplay: true; positional: false; volume: 1.0;"></a-entity>
+</a-scene>
+
+<div id="err"></div>
+<div id="placement-mode-indicator">PLACEMENT MODE: ACTIVE</div>
+<div id="placement-controls">
+  <div>1-3: Select Hotspot</div>
+  <div>WASD: Move</div>
+  <div>QE: Up/Down</div>
+  <div>Space: Save Position</div>
+  <div>M: Exit Mode</div>
+</div>
+
+<!-- Callouts -->
+<div id="callout-teeth" class="callout"><h3>Teeth & Enamel Film</h3>
+  <p>Warm aerosol forms a hygroscopic film (propylene glycol + glycerin) on teeth. It captures nicotine, flavor chemicals, and micro‑metals from the coil, increasing plaque adhesion and enamel exposure to acids.</p>
+  <button data-close="callout-teeth">Close</button></div>
+<div id="callout-tongue" class="callout"><h3>Tongue & Taste Receptors</h3>
+  <p>Deposited droplets temporarily blunt taste receptors and dehydrate the tongue surface, degrading taste acuity and mouthfeel while concentrating irritants.</p>
+  <button data-close="callout-tongue">Close</button></div>
+<div id="callout-cheek" class="callout"><h3>Cheek/Labial Mucosa</h3>
+  <p>Sticky residues coat the lining and increase contact time for aldehydes (e.g., formaldehyde, acetaldehyde, acrolein), aggravating local irritation and dryness.</p>
+  <button data-close="callout-cheek">Close</button></div>
+
+<script>
+  function showError(msg){ try{ console.error(msg); const el=document.getElementById('err'); el.textContent=String(msg); el.style.display='block'; }catch(_){ } }
+
+  // Clear hotspot positions
+  (function() {
+    if (window.location.hostname.includes('vercel.app')) {
+      console.log('Clearing hotspot positions');
+      localStorage.removeItem('mouth_hotspot_hs-teeth');
+      localStorage.removeItem('mouth_hotspot_hs-tongue');
+      localStorage.removeItem('mouth_hotspot_hs-cheek');
+    }
+  })();
+
+  // --- Inside-Mouth Camera Positioning ---
+  (function(){
+    let cameraPositioned = false;
+    
+    function positionCameraInsideMouth() {
+      if (cameraPositioned) return;
+      
+      const rig = document.getElementById('rig');
+      if (rig) {
+        // Position camera INSIDE the mouth on the tongue
+        rig.setAttribute('position', '0 0.05 -0.1');
+        console.log('Camera positioned INSIDE mouth on tongue');
+        cameraPositioned = true;
+      }
+    }
+
+    const scene = document.querySelector('a-scene');
+    scene.addEventListener('loaded', positionCameraInsideMouth);
+    scene.addEventListener('enter-vr', function() {
+      setTimeout(positionCameraInsideMouth, 100);
+    });
+    scene.addEventListener('exit-vr', positionCameraInsideMouth);
+  })();
+
+  // --- Audio ---
+  (function(){
+    const scene=document.querySelector('a-scene');
+    const sEl=document.getElementById('narration');
+    let tries=0;
+    function ensureContext(){
+      try{ if(AFRAME.audioContext && AFRAME.audioContext.state!=='running' && AFRAME.audioContext.resume){ AFRAME.audioContext.resume(); } }catch(_){}
+    }
+    function attempt(){
+      ensureContext();
+      const c=sEl.components && sEl.components.sound;
+      if(c && !c.playing){ try{ c.playSound(); }catch(_){} }
+      if(++tries<40) setTimeout(attempt,125);
+    }
+    ['loaded','enter-vr','enter-ar'].forEach(e=>scene.addEventListener(e,attempt));
+    ['pointerdown','touchstart','keydown','click','visibilitychange'].forEach(e=>document.addEventListener(e,attempt,{passive:true}));
+    window.addEventListener('load',attempt);
+    window.addEventListener('keydown',(e)=>{ if(e.key==='n'||e.key==='N'){ const c=sEl.components.sound; if(c){ try{ c.stopSound(); }catch(_){}
+      try{ c.playSound(); }catch(_){ } } } });
+    
+    sEl.addEventListener('sound-ended', function() {
+      console.log('Narration ended, advancing to bronchi_final.html');
+      window.location.href = 'bronchi_final.html';
+    });
+  })();
+
+  // --- Model Load ---
+  (function(){
+    const modelEl=document.getElementById('mouthModel'); 
+    modelEl.setAttribute('gltf-model','../assets/models/mouth.glb');
+    
+    modelEl.addEventListener('model-error', ()=>showError('Failed to load mouth model'));
+    modelEl.addEventListener('model-loaded', ()=>{
+      const mesh=modelEl.getObject3D('mesh'); 
+      if(!mesh){ showError('Mouth loaded but no mesh'); return; }
+      
+      // Make materials double-sided for inside viewing
+      mesh.traverse(n=>{ 
+        if(n.isMesh){ 
+          n.frustumCulled=false; 
+          const mats=Array.isArray(n.material)?n.material:[n.material];
+          mats.forEach(m=>{ 
+            if(m&&"side"in m){ 
+              m.side=THREE.DoubleSide; 
+              m.needsUpdate=true; 
+            } 
+          }); 
+        } 
+      });
+      
+      // Scale for inside-mouth viewing
+      const bbox=new THREE.Box3().setFromObject(mesh); 
+      const size=bbox.getSize(new THREE.Vector3()); 
+      const center=bbox.getCenter(new THREE.Vector3());
+      mesh.position.sub(center);
+      
+      const halfMin=Math.min(size.x,size.y,size.z)/2; 
+      const s=(halfMin>1e-6)?(0.8/halfMin):1.0; // Smaller scale for inside view
+      mesh.scale.multiplyScalar(s);
+      
+      console.log('Mouth model loaded for INSIDE view');
+      
+      // Ensure camera is positioned correctly after model loads
+      setTimeout(() => {
+        const rig = document.getElementById('rig');
+        if (rig) {
+          rig.setAttribute('position', '0 0.05 -0.1');
+        }
+      }, 100);
+    });
+  })();
+
+  // --- Hotspots INSIDE mouth ---
+  AFRAME.registerComponent('face-camera',{ 
+    tick:function(){ 
+      const cam=document.getElementById('cam'); 
+      if(cam && this.el.object3D){ 
+        this.el.object3D.lookAt(cam.object3D.getWorldPosition(new THREE.Vector3())); 
+      } 
+    } 
+  });
+  
+  function createInfoIcon() {
+    const container = document.createElement('a-entity');
+    
+    const circle = document.createElement('a-circle');
+    circle.setAttribute('radius', '0.02');
+    circle.setAttribute('color', '#d40000');
+    circle.setAttribute('material', 'shader: flat; opacity: 0.9');
+    container.appendChild(circle);
+    
+    const text = document.createElement('a-text');
+    text.setAttribute('value', 'i');
+    text.setAttribute('align', 'center');
+    text.setAttribute('color', '#ffffff');
+    text.setAttribute('position', '0 0 0.001');
+    text.setAttribute('scale', '0.06 0.06 1');
+    container.appendChild(text);
+    
+    return container;
+  }
+  
+  function addHotspot(id, defaultPos) {
+    const el = document.getElementById(id); 
+    if(!el) return;
+    
+    while(el.firstChild) el.removeChild(el.firstChild);
+    
+    const savedPos = localStorage.getItem(`mouth_hotspot_${id}`);
+    let pos = savedPos ? savedPos.split(' ').map(Number) : defaultPos.split(' ').map(Number);
+    
+    el.setAttribute('position', {x: pos[0], y: pos[1], z: pos[2]});
+    
+    const icon = createInfoIcon();
+    icon.setAttribute('face-camera', '');
+    
+    icon.setAttribute('animation', {
+      property: 'scale',
+      dir: 'alternate',
+      dur: 1200,
+      easing: 'easeInOutSine',
+      loop: true,
+      to: '1.15 1.15 1'
+    });
+    
+    el.appendChild(icon);
+    
+    const hit = document.createElement('a-sphere'); 
+    hit.setAttribute('radius', '0.06'); 
+    hit.setAttribute('material', 'color: #fff; opacity: 0; transparent: true'); 
+    hit.classList.add('clickable'); 
+    el.appendChild(hit);
+    
+    el.addEventListener('click', () => { 
+      const hotspotId = id.split('hs-')[1];
+      const box = document.getElementById('callout-' + hotspotId); 
+      if(box) {
+        box.style.display = 'block';
+      }
+    });
+    
+    console.log('INSIDE mouth hotspot created:', id);
+  }
+  
+  // Add hotspots positioned INSIDE the mouth
+  document.querySelector('a-scene').addEventListener('loaded', function() {
+    // Positions for INSIDE mouth viewing from tongue perspective
+    addHotspot('hs-teeth',  '0.08 0.12 -0.25');  // Teeth in front
+    addHotspot('hs-tongue', '0.00 -0.08 -0.15'); // Tongue below
+    addHotspot('hs-cheek',  '-0.15 0.08 -0.20'); // Cheek to the side
+    console.log('All INSIDE mouth hotspots created');
+  });
+  
+  document.querySelectorAll('.callout button').forEach(btn => { 
+    btn.addEventListener('click', () => { 
+      const t = btn.getAttribute('data-close'); 
+      const box = document.getElementById(t); 
+      if(box) box.style.display = 'none'; 
+    }); 
+  });
+
+  // --- Droplets CONFINED INSIDE mouth ---
+  AFRAME.registerComponent('inside-mouth-droplets',{
+    schema:{ 
+      enabled:{default:true}, 
+      rate:{default:200}, 
+      life:{default:2500}, 
+      sizeStart:{default:0.004}, 
+      sizeEnd:{default:0.01},
+      speed:{default:0.3}, 
+      lateral:{default:0.03}, 
+      max:{default:300} 
+    },
+    init:function(){
+      this.pool=[]; this.acc=0;
+      const tex=(function(){
+        const R=48,c=document.createElement('canvas'); c.width=c.height=R*2; const g=c.getContext('2d');
+        const gr=g.createRadialGradient(R,R,0,R,R,R); gr.addColorStop(0,'rgba(255,255,255,1)');
+        gr.addColorStop(.5,'rgba(255,255,255,.6)'); gr.addColorStop(.9,'rgba(255,255,255,.1)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+        g.fillStyle=gr; g.fillRect(0,0,c.width,c.height); const t=new THREE.CanvasTexture(c); return t; 
+      })();
+      for(let i=0;i<this.data.max;i++){
+        const mat=new THREE.SpriteMaterial({map:tex, color:0xffffff, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, opacity:0});
+        const s=new THREE.Sprite(mat); s.visible=false; s.scale.setScalar(this.data.sizeStart);
+        this.el.object3D.add(s);
+        this.pool.push({obj:s, mat:mat, alive:false, t:0, vel:new THREE.Vector3()});
+      }
+    },
+    _spawn:function(){
+      const d=this.data;
+      const slot=this.pool.find(p=>!p.alive); if(!slot) return;
+      slot.alive=true; slot.t=0;
+      
+      // Spawn droplets in front of camera (inside mouth)
+      const spawn = new THREE.Vector3(
+        (Math.random()-0.5) * 0.2,  // Random X inside mouth
+        (Math.random()-0.5) * 0.15, // Random Y inside mouth  
+        -0.3 + (Math.random() * 0.1) // In front of camera
+      );
+      
+      slot.obj.position.copy(spawn); 
+      slot.obj.visible=true; 
+      slot.obj.scale.setScalar(d.sizeStart); 
+      slot.mat.opacity=.8;
+      
+      // Move toward back of mouth
+      slot.vel.set(
+        (Math.random()-0.5)*d.lateral,
+        (Math.random()-0.5)*d.lateral,
+        -d.speed*(0.8+0.4*Math.random())
+      );
+    },
+    tick:function(time,dt){
+      if(!dt) return;
+      const d=this.data;
+      if(d.enabled){
+        this.acc+=dt; const interval=1000/Math.max(1,d.rate);
+        while(this.acc>=interval){ this._spawn(); this.acc-=interval; }
+      }
+      for(const p of this.pool){
+        if(!p.alive) continue;
+        p.t+=dt;
+        const k=Math.min(1,p.t/d.life);
+        const s=d.sizeStart*(1-k)+d.sizeEnd*k;
+        p.obj.scale.set(s,s,1);
+        p.obj.position.addScaledVector(p.vel,dt/1000);
+        p.mat.opacity=.8*(1-k);
+        
+        // Remove if too far back in mouth or lifetime ended
+        if(k>=1 || p.obj.position.z < -1.0){ 
+          p.alive=false; 
+          p.obj.visible=false; 
+        }
+      }
+    }
+  });
+  
+  document.getElementById('aeroEmitter').setAttribute('inside-mouth-droplets','');
+
+  // Progress tracking
+  (function() {
+    localStorage.setItem('vaporJourneyProgress', 'mouth');
+    console.log('Inside-mouth journey started');
+  })();
+</script>
+</body>
+</html>
