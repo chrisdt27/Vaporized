@@ -149,7 +149,7 @@
     background: rgba(35, 194, 255, 0.3);
   }
 
-  /* Enhanced VR Experience Section */
+  /* Enhanced VR Experience Section - REMOVED FROM CONSEQUENCE SCENES */
   .vr-section {
     position: fixed;
     top: 30px;
@@ -377,13 +377,13 @@
   <!-- Enhanced VR Mode Toggle -->
   <button id="vrToggle">Enter VR</button>
 
-  <!-- VR Experience Button -->
-  <div id="vrExperience" class="vr-section">
+  <!-- VR Experience Button - REMOVED FROM CONSEQUENCE SCENES -->
+  <!-- <div id="vrExperience" class="vr-section">
     <a href="journeys/mouth_Oculus.html" class="vr-launch-btn" id="vrLaunch">
       <span class="vr-icon">👁️</span>
       Enter VR Experience
     </a>
-  </div>
+  </div> -->
 
   <!-- Controller Hints -->
   <div id="controllerHints">
@@ -481,8 +481,7 @@
   const sadCrowd = document.getElementById('sadCrowd');
   const loading = document.getElementById('loading');
   const vrToggle = document.getElementById('vrToggle');
-  const vrExperience = document.getElementById('vrExperience');
-  const vrLaunch = document.getElementById('vrLaunch');
+  // REMOVED: vrExperience and vrLaunch elements
   const negativeConsequence = document.getElementById('negativeConsequence');
   const positiveConsequence = document.getElementById('positiveConsequence');
   const negativeContinue = document.getElementById('negativeContinue');
@@ -494,7 +493,7 @@
   let isVRMode = false;
   let cheeringAudioPlayed = false;
   let sadAudioPlayed = false;
-  let audioContextActivated = false; // NEW: Track audio context state
+  let audioContextActivated = false;
 
   // -------- Utils ----------
   function showError(msg){ console.error(msg); errEl.textContent = msg; errEl.style.display='block'; }
@@ -660,14 +659,14 @@
   function showConsequence(isNegative) {
     if (isNegative) {
       negativeConsequence.style.display = 'flex';
-      updateVRExperienceLink('negative');
+      // REMOVED: updateVRExperienceLink call
       // Give time for overlay to render before playing audio
       setTimeout(() => {
         playSadCrowd();
       }, 500);
     } else {
       positiveConsequence.style.display = 'flex';
-      updateVRExperienceLink('positive');
+      // REMOVED: updateVRExperienceLink call
       // Give time for overlay to render before playing audio
       setTimeout(() => {
         playCheeringCrowd();
@@ -686,23 +685,8 @@
     sadAudioPlayed = false;
   }
 
-  // -------- ENHANCED VR EXPERIENCE LINKING ----------
-  function showVRExperienceButton() {
-    vrExperience.style.display = 'block';
-  }
-
-  function updateVRExperienceLink(choiceType) {
-    let vrUrl = TO_VR;
-    
-    if (choiceType === 'positive') {
-      vrUrl += '?choice=positive';
-    } else if (choiceType === 'negative') {
-      vrUrl += '?choice=negative';
-    }
-    
-    vrLaunch.href = vrUrl;
-    showVRExperienceButton();
-  }
+  // -------- REMOVED VR EXPERIENCE LINKING FUNCTIONS ----------
+  // function showVRExperienceButton() and updateVRExperienceLink removed
 
   // -------- ENHANCED OCULUS WEBXR SUPPORT ----------
   async function checkOculusSupport() {
@@ -721,7 +705,6 @@
     return false;
   }
 
-  // [REST OF YOUR VR CODE REMAINS EXACTLY THE SAME - NO CHANGES]
   async function enterOculusVR() {
     if (!navigator.xr) {
       showError('WebXR not supported in this browser. Use Oculus Browser.');
@@ -764,7 +747,8 @@
   }
 
   function enhanceUIForVR() {
-    const interactiveElements = document.querySelectorAll('.btn, #continueBtn, .consequence-btn, #vrToggle, #vrLaunch');
+    const interactiveElements = document.querySelectorAll('.btn, #continueBtn, .consequence-btn, #vrToggle');
+    // REMOVED: #vrLaunch from interactiveElements
     interactiveElements.forEach(el => {
       el.classList.add('clickable');
       el.style.minWidth = '200px';
@@ -925,11 +909,7 @@
     }
   });
 
-  vrLaunch.addEventListener('click', (e) => {
-    e.preventDefault();
-    console.log('Launching 3D Oculus experience');
-    fadeAndGo(vrLaunch.href);
-  });
+  // REMOVED: vrLaunch event listener
 
   // Oculus controller support
   window.addEventListener('xrselect', (e) => {
@@ -962,11 +942,7 @@
         if (isVRMode) exitVR(); else enterVR();
       }
     }
-    if(e.key === 'r' || e.key === 'R') {
-      if (vrExperience.style.display !== 'none') {
-        vrLaunch.click();
-      }
-    }
+    // REMOVED: 'r' key handler for vrLaunch
     if(e.key === 'm' || e.key === 'M') {
       introMusic.muted = !introMusic.muted;
     }
@@ -977,7 +953,7 @@
     sessionStorage.setItem('comingFromIntro', 'true');
   });
 
-  console.log("🎯 Enhanced Oculus VR Experience Loaded with Fixed Audio");
+  console.log("🎯 Enhanced Oculus VR Experience Loaded - VR Experience Buttons Removed from Consequence Scenes");
 </script>
 </body>
 </html>
