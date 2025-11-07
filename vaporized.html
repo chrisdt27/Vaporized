@@ -724,17 +724,56 @@
 
   // -------- KEEP ALL YOUR WORKING AUDIO/VIDEO CODE ----------
   // [ALL YOUR EXISTING AUDIO SYSTEM CODE HERE - UNCHANGED]
-  function initializeAudio() {
-    console.log("🎵 Initializing audio system...");
+ function initializeAudio() {
+  console.log("🎵 Initializing audio system for Oculus...");
+  
+  // Set lower volumes for Oculus to prevent distortion
+  introMusic.volume = 0.6;
+  cheeringCrowd.volume = 0.6;
+  sadCrowd.volume = 0.6;
+  
+  // Preload all audio
+  introMusic.load();
+  cheeringCrowd.load();
+  sadCrowd.load();
+  
+  // Use Oculus-friendly audio startup
+  startAudioOnInteraction();
+}
+
+function startAudioOnInteraction() {
+  console.log("🔊 Setting up Oculus-friendly audio startup...");
+  
+  const startAudio = () => {
+    console.log("🖱️ User interaction detected, starting audio system");
     
-    cheeringCrowd.volume = 0.8;
-    sadCrowd.volume = 0.8;
+    // Play intro music immediately on first interaction
+    introMusic.play().then(() => {
+      console.log("✅ Intro music playing after user interaction");
+    }).catch(e => {
+      console.log("❌ Intro music failed even with interaction:", e);
+    });
     
-    cheeringCrowd.load();
-    sadCrowd.load();
-    
-    forceIntroMusicPlayback();
-  }
+    // Remove all interaction listeners once we get the first interaction
+    document.removeEventListener('click', startAudio);
+    document.removeEventListener('touchstart', startAudio);
+    document.removeEventListener('keydown', startAudio);
+  };
+  
+  // Listen for multiple types of interactions
+  document.addEventListener('click', startAudio, { once: true });
+  document.addEventListener('touchstart', startAudio, { once: true });
+  document.addEventListener('keydown', startAudio, { once: true });
+  
+  // Also try to auto-play for non-Oculus browsers
+  setTimeout(() => {
+    introMusic.play().then(() => {
+      console.log("✅ Intro music playing automatically (non-Oculus)");
+    }).catch(e => {
+      console.log("🔇 Autoplay blocked (expected on Oculus), waiting for interaction...");
+    });
+  }, 1000);
+}
 
   function forceIntroMusicPlayback() {
     console.log("🔊 Forcing intro music playback...");
@@ -778,37 +817,30 @@
   }
 
   function playCheeringCrowd() {
-    if (cheeringAudioPlayed) return;
+  if (cheeringAudioPlayed) return;
+  
+  console.log("🎉 Playing reward_cheer.mp3...");
+  
+  cheeringCrowd.currentTime = 0;
+  
+  // Always play cheering crowd - it should work after initial interaction
+  cheeringCrowd.play().then(() => {
+    console.log("✅ Cheering audio playing successfully!");
+    cheeringAudioPlayed = true;
+  }).catch(error => {
+    console.log("❌ Cheering audio failed, retrying once...");
     
-    console.log("🎉 Playing reward_cheer.mp3...");
-    
-    cheeringCrowd.currentTime = 0;
-    cheeringCrowd.volume = 0.8;
-    
-    const playAttempt = cheeringCrowd.play();
-    
-    if (playAttempt !== undefined) {
-      playAttempt.then(() => {
-        console.log("✅ Cheering audio playing successfully!");
+    // Single retry with shorter delay for Oculus
+    setTimeout(() => {
+      cheeringCrowd.play().then(() => {
+        console.log("✅ Cheering audio playing on retry!");
         cheeringAudioPlayed = true;
-      }).catch(error => {
-        console.log("❌ Cheering audio blocked, will play on next interaction");
-        
-        const enableAudio = () => {
-          console.log("🖱️ User interaction detected, playing cheering audio");
-          cheeringCrowd.play().then(() => {
-            console.log("✅ Cheering audio playing after interaction!");
-            cheeringAudioPlayed = true;
-          }).catch(e => {
-            console.log("❌ Final cheering audio failure");
-          });
-          document.removeEventListener('click', enableAudio);
-        };
-        
-        document.addEventListener('click', enableAudio, { once: true });
+      }).catch(e => {
+        console.log("❌ Final cheering audio failure");
       });
-    }
-  }
+    }, 100);
+  });
+}
 
   function playSadCrowd() {
     if (sadAudioPlayed) return;
