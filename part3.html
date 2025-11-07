@@ -47,25 +47,6 @@
     background: #1ea5e0;
   }
 
-  #continueBtn {
-    position: fixed;
-    right: 20px;
-    bottom: 20px;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    border-radius: 25px;
-    font-size: 16px;
-    cursor: pointer;
-    display: none;
-    font-weight: bold;
-  }
-
-  #continueBtn:hover {
-    background: #45a049;
-  }
-
   #loading {
     position: fixed;
     inset: 0;
@@ -84,11 +65,11 @@
     <div>Loading Track Video...</div>
   </div>
 
-  <!-- Video Stage -->
+  <!-- Video Stage - ONLY has video and skip button -->
   <div id="videoStage" style="display: none;">
     <video id="trackVideo" preload="auto" playsinline></video>
     <button id="skipVideo">Skip Video</button>
-    <button id="continueBtn">Start Track Practice</button>
+    <!-- NO CONTINUE BUTTON HERE -->
   </div>
 
 <script>
@@ -96,16 +77,14 @@
 const videoStage = document.getElementById('videoStage');
 const trackVideo = document.getElementById('trackVideo');
 const skipVideo = document.getElementById('skipVideo');
-const continueBtn = document.getElementById('continueBtn');
 const loading = document.getElementById('loading');
 
 // Track video path
 const TRACK_VIDEO_PATH = 'assets/video/Track.mp4';
 
 function startTrackGame() {
-  console.log('🎯 Starting 3D track game...');
-  // Replace this with your actual 3D track game URL
-  window.location.href = 'track_game.html'; // Change to your actual game file
+  console.log('Transitioning to track game...');
+  window.location.href = 'track_game.html';
 }
 
 function showVideoStage() {
@@ -118,54 +97,41 @@ function setupVideo() {
   trackVideo.src = TRACK_VIDEO_PATH;
   trackVideo.loop = false;
   
-  // When video ends, show continue button
+  // When video ends, AUTO-REDIRECT immediately
   trackVideo.addEventListener('ended', () => {
-    console.log('🏁 Track video ended');
-    continueBtn.style.display = 'block';
-    skipVideo.style.display = 'none';
+    console.log('Video ended - AUTO-REDIRECTING to track game');
+    startTrackGame();
   });
   
   // Handle video errors
   trackVideo.addEventListener('error', (error) => {
-    console.error('❌ Track video failed to load:', error);
-    showVideoStage();
-    continueBtn.style.display = 'block';
-    skipVideo.style.display = 'none';
+    console.error('Video failed to load:', error);
+    startTrackGame();
   });
   
   // Skip video button
   skipVideo.addEventListener('click', () => {
-    trackVideo.pause();
-    continueBtn.style.display = 'block';
-    skipVideo.style.display = 'none';
+    console.log('Video skipped');
+    startTrackGame();
   });
-  
-  // Continue to track game
-  continueBtn.addEventListener('click', startTrackGame);
   
   // Try to autoplay video
   showVideoStage();
   trackVideo.play().catch(error => {
-    console.log('Video autoplay blocked, user interaction required');
-    // Video will play when user interacts with skip button
+    console.log('Video autoplay blocked');
   });
 }
 
 // Initialize when page loads
 window.addEventListener('load', function() {
-  console.log('🎬 Loading Track video...');
+  console.log('Loading track video...');
   setupVideo();
 });
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    startTrackGame(); // Skip to game
-  }
-  if (e.key === ' ' || e.key === 'Enter') {
-    if (continueBtn.style.display === 'block') {
-      startTrackGame(); // Continue to game
-    }
+  if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') {
+    startTrackGame();
   }
 });
 </script>
