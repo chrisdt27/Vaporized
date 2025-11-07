@@ -873,8 +873,8 @@
                     modalDetails.textContent = "Chronic inflammation has led to bronchitis-like symptoms. Alveoli damage is significant and may be irreversible. Your athletic performance is severely compromised with greatly reduced endurance and slower recovery times.";
                     impactModal.style.display = 'flex';
                     
-                    // If user selects "1 Year" manually, start transition immediately
-                    startVideoTransition();
+                    // REMOVED: No longer triggers video transition when "1 Year" is clicked
+                    console.log('ℹ️ "1 Year" selected - showing damage visualization only');
                 }
             }
 
