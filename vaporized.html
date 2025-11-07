@@ -814,29 +814,23 @@
     }
   }
 
-  function playStarWarsIntro() {
+ function playStarWarsIntro() {
     return new Promise((resolve) => {
         const skipHandler = () => {
-            // Simply fade out the entire intro without touching the animation
-            starwarsIntro.style.opacity = '0';
-            starwarsIntro.style.transition = 'opacity 0.5s ease';
-            
+            fadeEl.classList.remove('hidden');
             setTimeout(() => {
                 starwarsIntro.style.display = 'none';
                 introMusic.pause();
-                introMusic.currentTime = 0;
+                fadeEl.classList.add('hidden');
                 resolve();
-            }, 500);
+            }, 300);
         };
-        
         skipIntro.addEventListener('click', skipHandler, { once: true });
-        
-        // Auto-skip after animation would naturally complete
         setTimeout(() => {
             if (starwarsIntro.style.display !== 'none') {
                 skipHandler();
             }
-        }, 31000); // Just slightly longer than the 30s animation
+        }, 30000);
     });
 }
   function playUntilEnd(src){
@@ -963,6 +957,7 @@
 </script>
 </body>
 </html>
+
 
 
 
