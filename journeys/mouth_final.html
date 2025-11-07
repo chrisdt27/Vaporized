@@ -88,9 +88,10 @@
 <div id="placement-mode-indicator">PLACEMENT MODE: ACTIVE</div>
 <div id="placement-controls">
   <div>1-3: Select Hotspot</div>
-  <div>WASD: Move</div>
+  <div>WASD: Move Hotspot</div>
   <div>QE: Up/Down</div>
   <div>Space: Save Position</div>
+  <div>R: Reset Position</div>
   <div>M: Exit Mode</div>
 </div>
 
@@ -249,6 +250,215 @@
     
     return container;
   }
+
+  // --- Enhanced Placement Mode System (VR optimized) ---
+  let placementMode = false;
+  let selectedHotspot = null;
+  const placementIndicator = document.getElementById('placement-mode-indicator');
+  const placementControls = document.getElementById('placement-controls');
+  
+  // Enhanced hotspot configuration with better default positions for current camera
+  const hotspots = [
+    { 
+      id: 'hs-teeth', 
+      name: 'Teeth', 
+      number: 1,
+      defaultPos: '0.15 0.08 -0.25'
+    },
+    { 
+      id: 'hs-tongue', 
+      name: 'Tongue', 
+      number: 2,
+      defaultPos: '0.00 -0.05 -0.35'
+    },
+    { 
+      id: 'hs-cheek', 
+      name: 'Cheek', 
+      number: 3,
+      defaultPos: '-0.18 0.08 -0.20'
+    }
+  ];
+  
+  // Key state tracking
+  const activeKeys = new Set();
+  
+  function setSelectedHotspot(hotspot) {
+    // Reset all hotspots to normal appearance
+    hotspots.forEach(hs => {
+      const el = document.getElementById(hs.id);
+      if (el) {
+        const icon = el.querySelector('a-entity');
+        if (icon) {
+          const circle = icon.querySelector('a-circle');
+          if (circle) circle.setAttribute('color', '#d40000');
+        }
+      }
+    });
+    
+    // Set new selected hotspot
+    selectedHotspot = hotspot;
+    
+    if (hotspot) {
+      const el = document.getElementById(hotspot.id);
+      if (el) {
+        const icon = el.querySelector('a-entity');
+        if (icon) {
+          const circle = icon.querySelector('a-circle');
+          if (circle) circle.setAttribute('color', '#00ff00');
+          
+          // Add selection animation
+          icon.setAttribute('animation__select', {
+            property: 'scale',
+            from: '1 1 1',
+            to: '1.3 1.3 1',
+            dur: 300,
+            easing: 'easeOutElastic'
+          });
+          icon.emit('animation__select');
+        }
+      }
+      
+      placementIndicator.innerHTML = `PLACEMENT MODE: ${hotspot.name.toUpperCase()} (Press SPACE to save)`;
+      console.log(`Selected hotspot: ${hotspot.name}`);
+    }
+  }
+  
+  function enablePlacementMode() {
+    placementMode = true;
+    placementIndicator.style.display = 'block';
+    placementControls.style.display = 'block';
+    
+    // Select first hotspot by default
+    setSelectedHotspot(hotspots[0]);
+    
+    console.log('Placement mode ENABLED - Use 1,2,3 to select hotspots, WASD/QE to move, SPACE to save');
+  }
+  
+  function disablePlacementMode() {
+    placementMode = false;
+    placementIndicator.style.display = 'none';
+    placementControls.style.display = 'none';
+    setSelectedHotspot(null);
+    
+    console.log('Placement mode DISABLED');
+  }
+  
+  function saveHotspotPosition() {
+    if (!selectedHotspot) return;
+    
+    const el = document.getElementById(selectedHotspot.id);
+    if (el) {
+      const pos = el.getAttribute('position');
+      const posString = `${pos.x} ${pos.y} ${pos.z}`;
+      localStorage.setItem(`mouth_hotspot_${selectedHotspot.id}`, posString);
+      console.log(`Saved position for ${selectedHotspot.name}: ${posString}`);
+      
+      // Visual feedback
+      placementIndicator.innerHTML = `SAVED: ${selectedHotspot.name}`;
+      setTimeout(() => {
+        if (placementMode && selectedHotspot) {
+          placementIndicator.innerHTML = `PLACEMENT MODE: ${selectedHotspot.name.toUpperCase()} (Press SPACE to save)`;
+        }
+      }, 1500);
+    }
+  }
+  
+  function moveSelectedHotspot(direction) {
+    if (!selectedHotspot || !placementMode) return;
+    
+    const el = document.getElementById(selectedHotspot.id);
+    if (el) {
+      const moveSpeed = 0.02;
+      const pos = el.getAttribute('position');
+      
+      // Simple relative movement - no camera dependency
+      switch(direction) {
+        case 'forward': pos.z -= moveSpeed; break;
+        case 'backward': pos.z += moveSpeed; break;
+        case 'left': pos.x -= moveSpeed; break;
+        case 'right': pos.x += moveSpeed; break;
+        case 'up': pos.y += moveSpeed; break;
+        case 'down': pos.y -= moveSpeed; break;
+      }
+      
+      el.setAttribute('position', pos);
+      console.log(`Moved ${selectedHotspot.name} to:`, pos);
+    }
+  }
+  
+  // Enhanced key handling for placement mode
+  window.addEventListener('keydown', (e) => {
+    // Toggle placement mode with M (always available)
+    if (e.key === 'm' || e.key === 'M') {
+      if (placementMode) {
+        disablePlacementMode();
+      } else {
+        enablePlacementMode();
+      }
+      e.preventDefault();
+      return;
+    }
+    
+    if (!placementMode) return;
+    
+    // Prevent default for movement keys to avoid page scrolling
+    if (['w', 'a', 's', 'd', 'q', 'e', ' ', '1', '2', '3', 'r'].includes(e.key.toLowerCase())) {
+      e.preventDefault();
+    }
+    
+    activeKeys.add(e.key.toLowerCase());
+    
+    // Hotspot selection with number keys
+    if (e.key >= '1' && e.key <= '3') {
+      const index = parseInt(e.key) - 1;
+      if (index < hotspots.length) {
+        setSelectedHotspot(hotspots[index]);
+      }
+      e.preventDefault();
+    }
+    
+    // Save position with Space
+    if (e.key === ' ') {
+      saveHotspotPosition();
+      e.preventDefault();
+    }
+    
+    // Reset to default position with R
+    if (e.key === 'r' || e.key === 'R') {
+      if (selectedHotspot) {
+        const el = document.getElementById(selectedHotspot.id);
+        if (el) {
+          const defaultPos = selectedHotspot.defaultPos.split(' ').map(Number);
+          el.setAttribute('position', {
+            x: defaultPos[0],
+            y: defaultPos[1], 
+            z: defaultPos[2]
+          });
+          console.log(`Reset ${selectedHotspot.name} to default position`);
+        }
+      }
+      e.preventDefault();
+    }
+  });
+  
+  window.addEventListener('keyup', (e) => {
+    activeKeys.delete(e.key.toLowerCase());
+  });
+  
+  // Enhanced movement in placement mode
+  AFRAME.registerComponent('placement-movement', {
+    tick: function() {
+      if (!placementMode || !selectedHotspot) return;
+      
+      // Check all movement keys using the activeKeys Set
+      if (activeKeys.has('w')) moveSelectedHotspot('forward');
+      if (activeKeys.has('s')) moveSelectedHotspot('backward');
+      if (activeKeys.has('a')) moveSelectedHotspot('left');
+      if (activeKeys.has('d')) moveSelectedHotspot('right');
+      if (activeKeys.has('q')) moveSelectedHotspot('up');
+      if (activeKeys.has('e')) moveSelectedHotspot('down');
+    }
+  });
   
   function addHotspot(id, defaultPos) {
     const el = document.getElementById(id); 
@@ -257,16 +467,20 @@
     // Clear any existing children
     while(el.firstChild) el.removeChild(el.firstChild);
     
+    // Find hotspot config
+    const hotspotConfig = hotspots.find(hs => hs.id === id);
+    const actualDefaultPos = hotspotConfig ? hotspotConfig.defaultPos : defaultPos;
+    
     // Get saved position or use default
     const savedPos = localStorage.getItem(`mouth_hotspot_${id}`);
-    console.log(`Hotspot ${id}: savedPos =`, savedPos, 'defaultPos =', defaultPos);
+    console.log(`Hotspot ${id}: savedPos =`, savedPos, 'defaultPos =', actualDefaultPos);
     
     let pos;
     if (window.location.hostname.includes('vercel.app') && !savedPos) {
         console.log('Vercel detected - no saved positions, using defaults');
-        pos = defaultPos.split(' ').map(Number);
+        pos = actualDefaultPos.split(' ').map(Number);
     } else {
-        pos = savedPos ? savedPos.split(' ').map(Number) : defaultPos.split(' ').map(Number);
+        pos = savedPos ? savedPos.split(' ').map(Number) : actualDefaultPos.split(' ').map(Number);
     }
     
     el.setAttribute('position', {x: pos[0], y: pos[1], z: pos[2]});
@@ -307,11 +521,15 @@
   
   // Add hotspots after scene is loaded
   document.querySelector('a-scene').addEventListener('loaded', function() {
-    // Adjust default positions for the new camera view
-    addHotspot('hs-teeth',  '0.12 0.05 -0.34');
-    addHotspot('hs-tongue', '0.00 -0.03 -0.42');
-    addHotspot('hs-cheek',  '-0.14 0.06 -0.28');
-    console.log('All hotspots created for VR view');
+    // Add hotspots with placement movement component
+    addHotspot('hs-teeth', '0.15 0.08 -0.25');
+    addHotspot('hs-tongue', '0.00 -0.05 -0.35');
+    addHotspot('hs-cheek', '-0.18 0.08 -0.20');
+    
+    // Add placement movement component to scene
+    document.querySelector('a-scene').setAttribute('placement-movement', '');
+    
+    console.log('All hotspots created for VR view with placement mode enabled');
   });
   
   document.querySelectorAll('.callout button').forEach(btn => { 
@@ -321,174 +539,6 @@
       if(box) box.style.display = 'none'; 
     }); 
   });
-
-  // --- Placement Mode System (VR optimized) ---
-  let placementMode = false;
-  let selectedHotspot = null;
-  const placementIndicator = document.getElementById('placement-mode-indicator');
-  const placementControls = document.getElementById('placement-controls');
-  
-  // Hotspot configuration
-  const hotspots = [
-    { id: 'hs-teeth', name: 'Teeth', number: 1 },
-    { id: 'hs-tongue', name: 'Tongue', number: 2 },
-    { id: 'hs-cheek', name: 'Cheek', number: 3 }
-  ];
-  
-  // Key state tracking
-  const activeKeys = new Set();
-  
-  function setSelectedHotspot(hotspot) {
-    // Reset all hotspots to normal appearance
-    hotspots.forEach(hs => {
-      const el = document.getElementById(hs.id);
-      if (el) {
-        const icon = el.querySelector('a-entity');
-        if (icon) {
-          const circle = icon.querySelector('a-circle');
-          if (circle) circle.setAttribute('color', '#d40000');
-        }
-      }
-    });
-    
-    // Set new selected hotspot
-    selectedHotspot = hotspot;
-    
-    if (hotspot) {
-      const el = document.getElementById(hotspot.id);
-      if (el) {
-        const icon = el.querySelector('a-entity');
-        if (icon) {
-          const circle = icon.querySelector('a-circle');
-          if (circle) circle.setAttribute('color', '#00ff00'); // Green for selected
-        }
-      }
-      
-      placementIndicator.innerHTML = `PLACEMENT MODE: ${hotspot.name.toUpperCase()} (Press SPACE to save)`;
-      console.log(`Selected hotspot: ${hotspot.name}`);
-    }
-  }
-  
-  function enablePlacementMode() {
-    placementMode = true;
-    placementIndicator.style.display = 'block';
-    placementControls.style.display = 'block';
-    
-    // Select first hotspot by default
-    setSelectedHotspot(hotspots[0]);
-    
-    console.log('Placement mode ENABLED');
-  }
-  
-  function disablePlacementMode() {
-    placementMode = false;
-    placementIndicator.style.display = 'none';
-    placementControls.style.display = 'none';
-    setSelectedHotspot(null);
-    
-    console.log('Placement mode DISABLED');
-  }
-  
-  function saveHotspotPosition() {
-    if (!selectedHotspot) return;
-    
-    const el = document.getElementById(selectedHotspot.id);
-    if (el) {
-      const pos = el.getAttribute('position');
-      const posString = `${pos.x} ${pos.y} ${pos.z}`;
-      localStorage.setItem(`mouth_hotspot_${selectedHotspot.id}`, posString);
-      console.log(`Saved position for ${selectedHotspot.name}: ${posString}`);
-      
-      // Visual feedback
-      placementIndicator.innerHTML = `SAVED: ${selectedHotspot.name}`;
-      setTimeout(() => {
-        if (placementMode && selectedHotspot) {
-          placementIndicator.innerHTML = `PLACEMENT MODE: ${selectedHotspot.name.toUpperCase()} (Press SPACE to save)`;
-        }
-      }, 1000);
-    }
-  }
-  
-  function moveSelectedHotspot(direction) {
-    if (!selectedHotspot || !placementMode) return;
-    
-    const el = document.getElementById(selectedHotspot.id);
-    if (el) {
-      const moveSpeed = 0.01;
-      const pos = el.getAttribute('position');
-      
-      switch(direction) {
-        case 'forward': pos.z -= moveSpeed; break;
-        case 'backward': pos.z += moveSpeed; break;
-        case 'left': pos.x -= moveSpeed; break;
-        case 'right': pos.x += moveSpeed; break;
-        case 'up': pos.y += moveSpeed; break;
-        case 'down': pos.y -= moveSpeed; break;
-      }
-      
-      el.setAttribute('position', pos);
-    }
-  }
-  
-  // Key handling for placement mode
-  window.addEventListener('keydown', (e) => {
-    // Toggle placement mode with M (always available)
-    if (e.key === 'm' || e.key === 'M') {
-      if (placementMode) {
-        disablePlacementMode();
-      } else {
-        enablePlacementMode();
-      }
-      e.preventDefault();
-      return;
-    }
-    
-    if (!placementMode) return;
-    
-    // Prevent default for movement keys to avoid page scrolling
-    if (['w', 'a', 's', 'd', 'q', 'e', ' ', '1', '2', '3'].includes(e.key.toLowerCase())) {
-      e.preventDefault();
-    }
-    
-    activeKeys.add(e.key.toLowerCase());
-    
-    // Hotspot selection with number keys
-    if (e.key >= '1' && e.key <= '3') {
-      const index = parseInt(e.key) - 1;
-      if (index < hotspots.length) {
-        setSelectedHotspot(hotspots[index]);
-      }
-      e.preventDefault();
-    }
-    
-    // Save position with Space
-    if (e.key === ' ') {
-      saveHotspotPosition();
-      e.preventDefault();
-    }
-  });
-  
-  window.addEventListener('keyup', (e) => {
-    activeKeys.delete(e.key.toLowerCase());
-  });
-  
-  // Movement in placement mode - using A-Frame tick system
-  AFRAME.registerComponent('placement-movement', {
-    tick: function() {
-      if (!placementMode || !selectedHotspot) return;
-      
-      // Check all movement keys using the activeKeys Set
-      if (activeKeys.has('w')) moveSelectedHotspot('forward');
-      if (activeKeys.has('s')) moveSelectedHotspot('backward');
-      if (activeKeys.has('a')) moveSelectedHotspot('left');
-      if (activeKeys.has('d')) moveSelectedHotspot('right');
-      if (activeKeys.has('q')) moveSelectedHotspot('up');
-      if (activeKeys.has('e')) moveSelectedHotspot('down');
-    }
-  });
-  
-  // Add placement movement component to scene
-  document.querySelector('a-scene').setAttribute('placement-movement', '');
 
   // --- Droplets (VR optimized) ---
   AFRAME.registerComponent('droplet-field',{
